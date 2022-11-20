@@ -1,5 +1,15 @@
+file(GLOB terms *)
+
+foreach(term ${terms})
+    file(RELATIVE_PATH short_name ${CMAKE_CURRENT_SOURCE_DIR} ${term})
+    if(IS_DIRECTORY ${term})
+        message("${short_name}")
+        set(MODULE_NAME ${short_name})
+        add_subdirectory(${short_name})
+    endif()
+endforeach()
 
 add_executable(sparks)
-
 target_sources(sparks PRIVATE main.cpp)
-target_include_directories(sparks PRIVATE ${GRASSLAND_INCLUDE_DIRS})
+target_include_directories(sparks PRIVATE ${GRASSLAND_INCLUDE_DIRS} ${SPARKS_INCLUDE_DIR})
+target_link_libraries(sparks PRIVATE ${SPARKS_LIBRARIES} grassland)
