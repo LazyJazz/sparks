@@ -1,12 +1,16 @@
-#include "sparks/app/app.h"
+﻿#include "sparks/app/app.h"
+
+#include "iostream"
+#include "sparks/util/util.h"
 
 namespace sparks {
 
-App::App() {
+App::App(const AppSettings &app_settings) {
   vulkan::framework::CoreSettings core_settings;
   core_settings.window_title = "Sparks";
-  core_settings.window_width = 1920;
-  core_settings.window_height = 1080;
+  core_settings.window_width = app_settings.width;
+  core_settings.window_height = app_settings.height;
+  core_settings.validation_layer = app_settings.validation_layer;
   core_ = std::make_unique<vulkan::framework::Core>(core_settings);
 }
 
@@ -64,13 +68,10 @@ void App::UpdateImGui() {
   ImGui_ImplGlfw_NewFrame();
   ImGui::NewFrame();
 
-  static bool global_settings_window_open = true;
-
-  if (global_settings_window_open) {
-    ImGui::Begin("Global Settings", &global_settings_window_open,
-                 ImGuiWindowFlags_NoMove);
+  if (global_settings_window_open_) {
+    ImGui::Begin("Global Settings", &global_settings_window_open_,
+                 ImGuiWindowFlags_NoMove | ImGuiWindowFlags_AlwaysAutoResize);
     ImGui::SetWindowPos({12, 12}, ImGuiCond_Once);
-    ImGui::SetWindowSize({200, 200}, ImGuiCond_Once);
     ImGui::Text("Hello, World!");
     ImGui::Separator();
     ImGui::Text("I'm Sparks!");

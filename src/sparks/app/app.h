@@ -1,11 +1,12 @@
 #pragma once
 #include "grassland/grassland.h"
+#include "sparks/app/app_settings.h"
 
 namespace sparks {
 using namespace grassland;
 class App {
  public:
-  App();
+  explicit App(const AppSettings &app_settings);
   void Run();
 
  private:
@@ -19,5 +20,7 @@ class App {
 
   std::unique_ptr<vulkan::framework::Core> core_;
   std::unique_ptr<vulkan::framework::TextureImage> screen_frame_;
+
+  bool global_settings_window_open_{true};
 };
 }  // namespace sparks
