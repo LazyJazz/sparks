@@ -4,6 +4,8 @@ project(sparks)
 
 set(CMAKE_CXX_STANDARD 17)
 
+add_subdirectory(assets)
+
 add_subdirectory(external/grassland)
 
 message("${GRASSLAND_INCLUDE_DIRS}")

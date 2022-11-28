@@ -10,7 +10,7 @@ foreach(term ${terms})
 endforeach()
 
 add_executable(sparks)
-target_sources(sparks PRIVATE main.cpp)
+target_sources(sparks PRIVATE sparks.cpp)
 target_include_directories(sparks PRIVATE ${GRASSLAND_INCLUDE_DIRS} ${SPARKS_INCLUDE_DIR})
 target_link_libraries(sparks PRIVATE ${SPARKS_LIBRARIES} grassland)
 add_dependencies(sparks sparks_shaders_target)
