@@ -6,6 +6,12 @@
 namespace sparks {
 class Scene {
  public:
+  Scene();
+  int PushTexture(const Texture &texture);
+  [[nodiscard]] const std::vector<Texture> &GetTextures() const;
+  int GetTextureCount();
+
  private:
+  std::vector<Texture> textures_;
 };
 }  // namespace sparks

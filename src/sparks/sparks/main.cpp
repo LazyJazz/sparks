@@ -3,6 +3,7 @@
 #include "absl/flags/usage.h"
 #include "iostream"
 #include "sparks/sparks.h"
+#include "tiny_obj_loader.h"
 
 ABSL_FLAG(bool,
           validation_layer,
@@ -24,6 +25,7 @@ void RunApp() {
 #if defined(_WIN32)
   SetConsoleOutputCP(65001);
 #endif
+
   sparks::AppSettings app_settings;
   app_settings.validation_layer = absl::GetFlag(FLAGS_validation_layer);
   app_settings.width = absl::GetFlag(FLAGS_width);
