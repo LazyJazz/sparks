@@ -5,7 +5,8 @@
 
 namespace sparks {
 
-App::App(const AppSettings &app_settings) {
+App::App(Renderer *renderer, const AppSettings &app_settings) {
+  renderer_ = renderer;
   vulkan::framework::CoreSettings core_settings;
   core_settings.window_title = "Sparks";
   core_settings.window_width = app_settings.width;

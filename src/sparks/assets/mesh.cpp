@@ -6,6 +6,9 @@
 
 namespace sparks {
 
+Mesh::Mesh(const Mesh &mesh) : Mesh(mesh.vertices_, mesh.indices_) {
+}
+
 Mesh::Mesh(const std::vector<Vertex> &vertices,
            const std::vector<uint32_t> &indices) {
   vertices_ = vertices;
@@ -68,10 +71,11 @@ AxisAlignedBoundingBox Mesh::GetAABB(const glm::mat4 &transform) const {
   }
   return result;
 }
+
 float Mesh::TraceRay(const glm::vec3 &origin,
                      const glm::vec3 &direction,
                      float t_min,
-                     float) {
+                     float t_max) const {
   return 0;
 }
 

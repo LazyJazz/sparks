@@ -1,12 +1,13 @@
 #pragma once
 #include "grassland/grassland.h"
 #include "sparks/app/app_settings.h"
+#include "sparks/renderer/renderer.h"
 
 namespace sparks {
 using namespace grassland;
 class App {
  public:
-  explicit App(const AppSettings &app_settings);
+  explicit App(Renderer *renderer, const AppSettings &app_settings);
   void Run();
 
  private:
@@ -17,6 +18,8 @@ class App {
   void OnClose();
 
   void UpdateImGui();
+
+  Renderer *renderer_{nullptr};
 
   std::unique_ptr<vulkan::framework::Core> core_;
   std::unique_ptr<vulkan::framework::TextureImage> screen_frame_;
