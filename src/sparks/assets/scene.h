@@ -1,5 +1,6 @@
 #pragma once
 #include "memory"
+#include "sparks/assets/camera.h"
 #include "sparks/assets/entity.h"
 #include "sparks/assets/material.h"
 #include "sparks/assets/mesh.h"
@@ -22,10 +23,15 @@ class Scene {
   [[nodiscard]] const std::vector<Entity> &GetEntities() const;
   [[nodiscard]] int GetEntityCount() const;
 
+  void SetCamera(const Camera &camera);
+  Camera &GetCamera();
+
   void Clear();
 
  private:
   std::vector<Texture> textures_;
   std::vector<Entity> entities_;
+  glm::mat4 camera_to_world_{1.0f};
+  Camera camera_{};
 };
 }  // namespace sparks

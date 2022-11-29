@@ -22,6 +22,7 @@ int Scene::GetTextureCount() const {
 void Scene::Clear() {
   textures_.clear();
   entities_.clear();
+  camera_ = Camera{};
 }
 
 const std::vector<Entity> &Scene::GetEntities() const {
@@ -30,6 +31,14 @@ const std::vector<Entity> &Scene::GetEntities() const {
 
 int Scene::GetEntityCount() const {
   return int(entities_.size());
+}
+
+Camera &Scene::GetCamera() {
+  return camera_;
+}
+
+void Scene::SetCamera(const Camera &camera) {
+  camera_ = camera;
 }
 
 }  // namespace sparks

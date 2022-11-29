@@ -1,6 +1,8 @@
 #pragma once
 #include "grassland/grassland.h"
 #include "sparks/app/app_settings.h"
+#include "sparks/app/entity_uniform_object.h"
+#include "sparks/app/global_uniform_object.h"
 #include "sparks/renderer/renderer.h"
 
 namespace sparks {
@@ -23,6 +25,13 @@ class App {
 
   std::unique_ptr<vulkan::framework::Core> core_;
   std::unique_ptr<vulkan::framework::TextureImage> screen_frame_;
+
+  std::unique_ptr<vulkan::framework::RenderNode> render_node_;
+  std::unique_ptr<vulkan::framework::TextureImage> depth_buffer_;
+  std::unique_ptr<vulkan::framework::DynamicBuffer<GlobalUniformObject>>
+      global_uniform_buffer_;
+  std::unique_ptr<vulkan::framework::DynamicBuffer<EntityUniformObject>>
+      entity_uniform_buffer_;
 
   bool global_settings_window_open_{true};
 };
