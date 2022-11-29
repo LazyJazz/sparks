@@ -1,5 +1,6 @@
 #pragma once
 #include "memory"
+#include "sparks/assets/mesh.h"
 #include "sparks/assets/texture.h"
 #include "vector"
 

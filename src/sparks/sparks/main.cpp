@@ -25,7 +25,8 @@ void RunApp() {
 #if defined(_WIN32)
   SetConsoleOutputCP(65001);
 #endif
-
+  sparks::Mesh model = sparks::Mesh::Sphere();
+  model.WriteObjFile("sphere.obj");
   sparks::AppSettings app_settings;
   app_settings.validation_layer = absl::GetFlag(FLAGS_validation_layer);
   app_settings.width = absl::GetFlag(FLAGS_width);

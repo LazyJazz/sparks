@@ -1,17 +1,16 @@
 #pragma once
-#include "sparks/assets/vertex.h"
-#include "vector"
+#include "glm/glm.hpp"
+#include "iostream"
+#include "sparks/assets/aabb.h"
 
 namespace sparks {
 class Model {
  public:
-  Model(const std::vector<Vertex> &vertices,
-        const std::vector<uint32_t> &indices);
-  static Model Cube(const glm::vec3 &center, const glm::vec3 &size);
-  static Model Sphere(const glm::vec3 &center, float radius);
-
- private:
-  std::vector<Vertex> vertices_;
-  std::vector<uint32_t> indices_;
+  virtual float TraceRay(const glm::vec3 &origin,
+                         const glm::vec3 &direction,
+                         float t_min,
+                         float) = 0;
+  [[nodiscard]] virtual AxisAlignedBoundingBox GetAABB(
+      const glm::mat4 &transform) const = 0;
 };
 }  // namespace sparks
