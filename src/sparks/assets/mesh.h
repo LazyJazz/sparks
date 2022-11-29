@@ -16,6 +16,8 @@ class Mesh : public Model {
                                float) const override;
   [[nodiscard]] AxisAlignedBoundingBox GetAABB(
       const glm::mat4 &transform) const override;
+  [[nodiscard]] std::vector<Vertex> GetVertices() const override;
+  [[nodiscard]] std::vector<uint32_t> GetIndices() const override;
   static Mesh Cube(const glm::vec3 &center, const glm::vec3 &size);
   static Mesh Sphere(const glm::vec3 &center = glm::vec3{0.0f},
                      float radius = 1.0f);

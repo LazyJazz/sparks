@@ -26,6 +26,8 @@ class Scene {
   void SetCamera(const Camera &camera);
   Camera &GetCamera();
 
+  [[nodiscard]] const glm::mat4 &GetCameraToWorld() const;
+
   void Clear();
 
  private:

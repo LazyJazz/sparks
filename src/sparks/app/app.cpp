@@ -67,6 +67,26 @@ void App::OnInit() {
        VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32_SFLOAT});
   render_node_->BuildRenderNode(core_->GetFramebufferWidth(),
                                 core_->GetFramebufferHeight());
+
+  renderer_->GetScene().AddEntity(Mesh::Sphere(glm::vec3{0.0f, 0.0f, 2.0f}),
+                                  Material{}, glm::mat4{1.0f});
+
+  auto &entities = renderer_->GetScene().GetEntities();
+  for (int i = 0; i < entities.size(); i++) {
+    auto &entity = entities[i];
+    auto vertices = entity.GetModel()->GetVertices();
+    auto indices = entity.GetModel()->GetIndices();
+    EntityDeviceAsset device_asset{
+        std::make_unique<vulkan::framework::StaticBuffer<Vertex>>(
+            core_.get(), vertices.size()),
+        std::make_unique<vulkan::framework::StaticBuffer<uint32_t>>(
+            core_.get(), indices.size())};
+    device_asset.vertex_buffer->Upload(vertices.data());
+    device_asset.index_buffer->Upload(indices.data());
+    entity_device_assets_.push_back(std::move(device_asset));
+    device_asset.vertex_buffer.release();
+    device_asset.index_buffer.release();
+  }
 }
 
 void App::OnLoop() {
@@ -81,21 +101,39 @@ void App::OnLoop() {
 
 void App::OnUpdate(uint32_t ms) {
   UpdateImGui();
+  global_uniform_buffer_->operator[](0).projection =
+      renderer_->GetScene().GetCamera().GetProjectionMatrix(
+          float(core_->GetFramebufferWidth()) /
+          float(core_->GetFramebufferHeight()));
+  global_uniform_buffer_->operator[](0).camera =
+      glm::inverse(renderer_->GetScene().GetCameraToWorld());
+  auto &entities = renderer_->GetScene().GetEntities();
+  for (int i = 0; i < entities.size(); i++) {
+    auto &entity = entities[i];
+    entity_uniform_buffer_->operator[](i).model = entity.GetTransformMatrix();
+  }
 }
 
 void App::OnRender() {
   core_->BeginCommandRecord();
-  render_node_.reset();
-  global_uniform_buffer_.reset();
-  entity_uniform_buffer_.reset();
   screen_frame_->ClearColor({0.0f, 0.0f, 0.0f, 1.0f});
   depth_buffer_->ClearDepth({1.0f, 0});
+  for (int i = 0; i < entity_device_assets_.size(); i++) {
+    auto &entity_asset = entity_device_assets_[i];
+    render_node_->Draw(entity_asset.vertex_buffer.get(),
+                       entity_asset.index_buffer.get(),
+                       entity_asset.index_buffer->Size(), i);
+  }
   core_->ImGuiRender();
   core_->Output(screen_frame_.get());
   core_->EndCommandRecordAndSubmit();
 }
 
 void App::OnClose() {
+  entity_device_assets_.clear();
+  render_node_.reset();
+  global_uniform_buffer_.reset();
+  entity_uniform_buffer_.reset();
   screen_frame_.reset();
 }
 

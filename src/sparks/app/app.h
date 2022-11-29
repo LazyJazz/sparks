@@ -1,6 +1,7 @@
 #pragma once
 #include "grassland/grassland.h"
 #include "sparks/app/app_settings.h"
+#include "sparks/app/entity_device_asset.h"
 #include "sparks/app/entity_uniform_object.h"
 #include "sparks/app/global_uniform_object.h"
 #include "sparks/renderer/renderer.h"
@@ -32,6 +33,8 @@ class App {
       global_uniform_buffer_;
   std::unique_ptr<vulkan::framework::DynamicBuffer<EntityUniformObject>>
       entity_uniform_buffer_;
+
+  std::vector<EntityDeviceAsset> entity_device_assets_;
 
   bool global_settings_window_open_{true};
 };

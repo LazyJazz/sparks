@@ -10,6 +10,6 @@ glm::mat4 Camera::GetProjectionMatrix(float aspect) const {
 }
 
 void Camera::ImGuiItems() {
-  ImGui::SliderFloat("FOV", &fov_, 10.0f, 90.0f, "%.0f", 0);
+  ImGui::SliderFloat("FOV", &fov_, 10.0f, 160.0f, "%.0f", 0);
 }
 }  // namespace sparks

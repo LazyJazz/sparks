@@ -2,6 +2,8 @@
 #include "glm/glm.hpp"
 #include "iostream"
 #include "sparks/assets/aabb.h"
+#include "sparks/assets/vertex.h"
+#include "vector"
 
 namespace sparks {
 class Model {
@@ -13,5 +15,7 @@ class Model {
                                        float) const = 0;
   [[nodiscard]] virtual AxisAlignedBoundingBox GetAABB(
       const glm::mat4 &transform) const = 0;
+  [[nodiscard]] virtual std::vector<Vertex> GetVertices() const = 0;
+  [[nodiscard]] virtual std::vector<uint32_t> GetIndices() const = 0;
 };
 }  // namespace sparks

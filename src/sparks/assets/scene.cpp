@@ -41,4 +41,8 @@ void Scene::SetCamera(const Camera &camera) {
   camera_ = camera;
 }
 
+const glm::mat4 &Scene::GetCameraToWorld() const {
+  return camera_to_world_;
+}
+
 }  // namespace sparks

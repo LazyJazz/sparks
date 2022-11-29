@@ -101,5 +101,11 @@ void Mesh::WriteObjFile(const std::string &file_path) const {
     file.close();
   }
 }
+std::vector<Vertex> Mesh::GetVertices() const {
+  return vertices_;
+}
+std::vector<uint32_t> Mesh::GetIndices() const {
+  return indices_;
+}
 
 }  // namespace sparks
