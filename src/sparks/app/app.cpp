@@ -165,6 +165,7 @@ void App::OnRender() {
       VK_ACCESS_TRANSFER_READ_BIT, VK_IMAGE_LAYOUT_GENERAL,
       VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
       VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
+  core_->TemporalSubmit();
   core_->ImGuiRender();
   core_->Output(screen_frame_.get());
   core_->EndCommandRecordAndSubmit();

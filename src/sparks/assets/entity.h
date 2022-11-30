@@ -1,4 +1,5 @@
 #pragma once
+#include "memory"
 #include "sparks/assets/material.h"
 #include "sparks/assets/mesh.h"
 #include "sparks/assets/model.h"
