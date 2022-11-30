@@ -33,6 +33,7 @@ class Scene {
  private:
   std::vector<Texture> textures_;
   std::vector<Entity> entities_;
+  int envmap_id_{};
   glm::mat4 camera_to_world_{1.0f};
   Camera camera_{};
 };

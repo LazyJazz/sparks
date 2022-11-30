@@ -33,6 +33,8 @@ class App {
       global_uniform_buffer_;
   std::unique_ptr<vulkan::framework::DynamicBuffer<EntityUniformObject>>
       entity_uniform_buffer_;
+  std::unique_ptr<vulkan::framework::DynamicBuffer<Material>>
+      material_uniform_buffer_;
 
   std::vector<EntityDeviceAsset> entity_device_assets_;
 

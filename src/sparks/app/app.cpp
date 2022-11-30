@@ -51,6 +51,9 @@ void App::OnInit() {
   entity_uniform_buffer_ =
       std::make_unique<vulkan::framework::DynamicBuffer<EntityUniformObject>>(
           core_.get(), 16384);
+  material_uniform_buffer_ =
+      std::make_unique<vulkan::framework::DynamicBuffer<Material>>(core_.get(),
+                                                                   16384);
   render_node_ = std::make_unique<vulkan::framework::RenderNode>(core_.get());
   render_node_->AddShader("../../shaders/scene_view.frag.spv",
                           VK_SHADER_STAGE_FRAGMENT_BIT);
@@ -60,6 +63,9 @@ void App::OnInit() {
                                   VK_SHADER_STAGE_VERTEX_BIT);
   render_node_->AddBufferBinding(entity_uniform_buffer_.get(),
                                  VK_SHADER_STAGE_VERTEX_BIT);
+  render_node_->AddBufferBinding(
+      material_uniform_buffer_.get(),
+      VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
   render_node_->AddColorAttachment(screen_frame_.get());
   render_node_->AddDepthAttachment(depth_buffer_.get());
   render_node_->VertexInput(
@@ -67,9 +73,6 @@ void App::OnInit() {
        VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32_SFLOAT});
   render_node_->BuildRenderNode(core_->GetFramebufferWidth(),
                                 core_->GetFramebufferHeight());
-
-  renderer_->GetScene().AddEntity(Mesh::Sphere(glm::vec3{0.0f, 0.0f, 2.0f}),
-                                  Material{}, glm::mat4{1.0f});
 
   auto &entities = renderer_->GetScene().GetEntities();
   for (int i = 0; i < entities.size(); i++) {
@@ -84,8 +87,6 @@ void App::OnInit() {
     device_asset.vertex_buffer->Upload(vertices.data());
     device_asset.index_buffer->Upload(indices.data());
     entity_device_assets_.push_back(std::move(device_asset));
-    device_asset.vertex_buffer.release();
-    device_asset.index_buffer.release();
   }
 }
 
@@ -111,6 +112,7 @@ void App::OnUpdate(uint32_t ms) {
   for (int i = 0; i < entities.size(); i++) {
     auto &entity = entities[i];
     entity_uniform_buffer_->operator[](i).model = entity.GetTransformMatrix();
+    material_uniform_buffer_->operator[](i) = entity.GetMaterial();
   }
 }
 

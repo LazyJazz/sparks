@@ -7,19 +7,25 @@
 
 namespace sparks {
 
-Texture::Texture(uint32_t width, uint32_t height, const glm::vec3 &color) {
+Texture::Texture(uint32_t width,
+                 uint32_t height,
+                 const glm::vec3 &color,
+                 SampleType sample_type) {
   width_ = width;
   height_ = height;
   buffer_.resize(width * height);
+  sample_type_ = sample_type;
   std::fill(buffer_.data(), buffer_.data() + width * height, color);
 }
 
 Texture::Texture(uint32_t width,
                  uint32_t height,
-                 const glm::vec3 *color_buffer) {
+                 const glm::vec3 *color_buffer,
+                 SampleType sample_type) {
   width_ = width;
   height_ = height;
   buffer_.resize(width * height);
+  sample_type_ = sample_type;
   std::memcpy(buffer_.data(), color_buffer,
               sizeof(glm::vec3) * width_ * height_);
 }
@@ -40,7 +46,8 @@ bool Texture::Load(const std::string &file_path, Texture &texture) {
   if (absl::EndsWithIgnoreCase(file_path, ".hdr")) {
     auto result = stbi_loadf(file_path.c_str(), &x, &y, &c, 3);
     if (result) {
-      texture = Texture(x, y, reinterpret_cast<glm::vec3 *>(result));
+      texture = Texture(x, y, reinterpret_cast<glm::vec3 *>(result),
+                        SAMPLE_TYPE_LINEAR);
       stbi_image_free(result);
     } else {
       return false;
@@ -55,7 +62,7 @@ bool Texture::Load(const std::string &file_path, Texture &texture) {
             glm::vec3{result[i * 3], result[i * 3 + 1], result[i * 3 + 2]} *
             inv_255;
       }
-      texture = Texture(x, y, convert_buffer.data());
+      texture = Texture(x, y, convert_buffer.data(), SAMPLE_TYPE_LINEAR);
       stbi_image_free(result);
     } else {
       return false;
@@ -93,4 +100,40 @@ void Texture::Store(const std::string &file_path) {
     }
   }
 }
+
+void Texture::SetSampleType(SampleType sample_type) {
+  sample_type_ = sample_type;
+}
+
+SampleType Texture::GetSampleType() const {
+  return sample_type_;
+}
+
+glm::vec3 &Texture::operator()(int x, int y) {
+  x = std::min(int(width_ - 1), std::max(x, 0));
+  y = std::min(int(height_ - 1), std::max(y, 0));
+  return buffer_[y * width_ + x];
+}
+
+const glm::vec3 &Texture::operator()(int x, int y) const {
+  x = std::min(int(width_ - 1), std::max(x, 0));
+  y = std::min(int(height_ - 1), std::max(y, 0));
+  return buffer_[y * width_ + x];
+}
+
+glm::vec3 Texture::Sample(glm::vec2 tex_coord) const {
+  if (sample_type_ == SAMPLE_TYPE_LINEAR) {
+    int x = std::lround(tex_coord.x - 0.5f);
+    int y = std::lround(tex_coord.y - 0.5f);
+    float fx = tex_coord.x - float(x);
+    float fy = tex_coord.y - float(y);
+    return operator()(x, y) * (1.0f - fx) * (1.0f - fy) +
+           operator()(x + 1, y) * (fx) * (1.0f - fy) +
+           operator()(x, y + 1) * (1.0f - fx) * (fy) +
+           operator()(x + 1, y + 1) * (fx) * (fy);
+  } else {
+    return operator()(std::lround(tex_coord.x), std::lround(tex_coord.y));
+  }
+}
+
 }  // namespace sparks

@@ -1,9 +1,26 @@
 #include "sparks/assets/scene.h"
 
+#include "glm/glm.hpp"
+#include "glm/gtc/matrix_transform.hpp"
+
 namespace sparks {
 
 Scene::Scene() {
-  textures_.push_back(Texture(1, 1, {0.6f, 0.7f, 0.8f}));
+  textures_.push_back(Texture(1, 1, {0.6f, 0.7f, 0.8f}, SAMPLE_TYPE_LINEAR));
+  Texture envmap(SAMPLE_TYPE_LINEAR);
+  Texture::Load("../../textures/envmap_parking_lot_5120.hdr", envmap);
+  envmap_id_ = AddTexture(envmap);
+  AddEntity(Mesh::Sphere(glm::vec3{0.0f, 0.5f, 0.0f}, 0.5f), Material{},
+            glm::mat4{1.0f});
+  AddEntity(Mesh({{{-1.0f, 0.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
+                  {{-1.0f, 0.0f, -1.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f}},
+                  {{1.0f, 0.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
+                  {{1.0f, 0.0f, -1.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}}},
+                 {0, 1, 2, 1, 2, 3}),
+            Material{}, glm::mat4{1.0f});
+  camera_to_world_ = glm::inverse(glm::lookAt(glm::vec3{2.0f, 1.0f, 3.0f},
+                                              glm::vec3{0.0f, 0.0f, 0.0f},
+                                              glm::vec3{0.0f, 1.0f, 0.0f}));
 }
 
 int Scene::AddTexture(const Texture &texture) {
