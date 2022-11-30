@@ -13,7 +13,9 @@ class Entity {
          const Material &material,
          const glm::mat4 &transform = glm::mat4{1.0f});
   [[nodiscard]] const Model *GetModel() const;
+  [[nodiscard]] glm::mat4 &GetTransformMatrix();
   [[nodiscard]] const glm::mat4 &GetTransformMatrix() const;
+  [[nodiscard]] Material &GetMaterial();
   [[nodiscard]] const Material &GetMaterial() const;
 
  private:

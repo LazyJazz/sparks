@@ -21,6 +21,9 @@ class App {
   void OnClose();
 
   void UpdateImGui();
+  void UpdateDynamicBuffer();
+  void UpdateHostStencilBuffer();
+  void HandleImGuiIO();
 
   Renderer *renderer_{nullptr};
 
@@ -29,6 +32,9 @@ class App {
 
   std::unique_ptr<vulkan::framework::RenderNode> render_node_;
   std::unique_ptr<vulkan::framework::TextureImage> depth_buffer_;
+  std::unique_ptr<vulkan::framework::TextureImage> stencil_buffer_;
+  std::unique_ptr<vulkan::Buffer> stencil_device_buffer_;
+  std::vector<uint32_t> stencil_host_buffer_;
   std::unique_ptr<vulkan::framework::DynamicBuffer<GlobalUniformObject>>
       global_uniform_buffer_;
   std::unique_ptr<vulkan::framework::DynamicBuffer<EntityUniformObject>>
@@ -39,5 +45,7 @@ class App {
   std::vector<EntityDeviceAsset> entity_device_assets_;
 
   bool global_settings_window_open_{true};
+  int hover_entity_id_{-1};
+  int selected_entity_id_{-1};
 };
 }  // namespace sparks

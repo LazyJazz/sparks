@@ -42,6 +42,18 @@ void Scene::Clear() {
   camera_ = Camera{};
 }
 
+Entity &Scene::GetEntity(int entity_index) {
+  return entities_[entity_index];
+}
+
+const Entity &Scene::GetEntity(int entity_index) const {
+  return entities_[entity_index];
+}
+
+std::vector<Entity> &Scene::GetEntities() {
+  return entities_;
+}
+
 const std::vector<Entity> &Scene::GetEntities() const {
   return entities_;
 }

@@ -20,6 +20,10 @@ class Scene {
     entities_.emplace_back(args...);
     return int(entities_.size() - 1);
   }
+
+  [[nodiscard]] Entity &GetEntity(int entity_index);
+  [[nodiscard]] const Entity &GetEntity(int entity_index) const;
+  [[nodiscard]] std::vector<Entity> &GetEntities();
   [[nodiscard]] const std::vector<Entity> &GetEntities() const;
   [[nodiscard]] int GetEntityCount() const;
 
