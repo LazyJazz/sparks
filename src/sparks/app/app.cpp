@@ -198,7 +198,9 @@ void App::UpdateImGui() {
       if (ImGui::CollapsingHeader("Material")) {
         Material &material =
             renderer_->GetScene().GetEntity(selected_entity_id_).GetMaterial();
-        ImGui::ColorEdit3("Albedo Color", &material.albedo_color[0]);
+        ImGui::ColorEdit3(
+            "Albedo Color", &material.albedo_color[0],
+            ImGuiColorEditFlags_PickerHueWheel | ImGuiColorEditFlags_Float);
       }
     }
     ImGui::Text("Hover item: %s",
@@ -233,10 +235,6 @@ void App::UpdateDynamicBuffer() {
 }
 
 void App::UpdateHostStencilBuffer() {
-  std::memcpy(stencil_host_buffer_.data(), stencil_device_buffer_->Map(),
-              stencil_device_buffer_->Size());
-  stencil_device_buffer_->Unmap();
-
   double dx, dy;
   glfwGetCursorPos(core_->GetWindow(), &dx, &dy);
   dx *=
@@ -249,7 +247,12 @@ void App::UpdateHostStencilBuffer() {
       y >= core_->GetFramebufferHeight()) {
     hover_entity_id_ = -1;
   } else {
-    hover_entity_id_ = int(stencil_host_buffer_[index]);
+    //    std::memcpy(stencil_host_buffer_.data(),
+    //    stencil_device_buffer_->Map(),
+    //                stencil_device_buffer_->Size());
+    hover_entity_id_ = *reinterpret_cast<int *>(
+        stencil_device_buffer_->Map(sizeof(int), index * sizeof(int)));
+    stencil_device_buffer_->Unmap();
   }
 }
 
