@@ -45,6 +45,12 @@ class App {
   std::unique_ptr<vulkan::framework::DynamicBuffer<Material>>
       material_uniform_buffer_;
 
+  std::unique_ptr<vulkan::framework::RenderNode> envmap_render_node_;
+  std::unique_ptr<vulkan::framework::StaticBuffer<glm::vec2>>
+      envmap_vertex_buffer_;
+  std::unique_ptr<vulkan::framework::StaticBuffer<uint32_t>>
+      envmap_index_buffer_;
+
   std::vector<EntityDeviceAsset> entity_device_assets_;
   int num_loaded_device_assets_{0};
 

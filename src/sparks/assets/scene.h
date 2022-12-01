@@ -29,15 +29,20 @@ class Scene {
 
   void SetCamera(const Camera &camera);
   Camera &GetCamera();
-
   [[nodiscard]] const glm::mat4 &GetCameraToWorld() const;
+
+  int &GetEnvmapId();
+  [[nodiscard]] const int &GetEnvmapId() const;
+  float &GetEnvmapOffset();
+  [[nodiscard]] const float &GetEnvmapOffset() const;
 
   void Clear();
 
  private:
   std::vector<Texture> textures_;
   std::vector<Entity> entities_;
-  int envmap_id_{};
+  int envmap_id_{0};
+  float envmap_offset_{0.0f};
   glm::mat4 camera_to_world_{1.0f};
   Camera camera_{};
 };

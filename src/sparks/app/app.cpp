@@ -57,6 +57,7 @@ void App::OnInit() {
     depth_buffer_->Resize(width, height);
     stencil_buffer_->Resize(width, height);
     render_node_->BuildRenderNode(width, height);
+    envmap_render_node_->BuildRenderNode(width, height);
     stencil_device_buffer_ = std::make_unique<vulkan::Buffer>(
         core_->GetDevice(), sizeof(uint32_t) * width * height,
         VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
@@ -77,37 +78,19 @@ void App::OnInit() {
   material_uniform_buffer_ =
       std::make_unique<vulkan::framework::DynamicBuffer<Material>>(core_.get(),
                                                                    16384);
-  auto &textures = renderer_->GetScene().GetTextures();
-  for (int i = num_loaded_device_textures_; i < textures.size(); i++) {
-    auto &texture = textures[i];
-    VkFilter filter{VK_FILTER_LINEAR};
-    switch (texture.GetSampleType()) {
-      case SAMPLE_TYPE_LINEAR:
-        filter = VK_FILTER_LINEAR;
-        break;
-      case SAMPLE_TYPE_NEAREST:
-        filter = VK_FILTER_NEAREST;
-        break;
-    }
-    device_texture_samplers_.emplace_back(
-        std::make_unique<vulkan::framework::TextureImage>(
-            core_.get(), texture.GetWidth(), texture.GetHeight()),
-        std::make_unique<vulkan::Sampler>(core_->GetDevice(), filter));
-    auto &device_texture_sampler = *device_texture_samplers_.rbegin();
-    std::unique_ptr<vulkan::Buffer> texture_image_buffer =
-        std::make_unique<vulkan::Buffer>(
-            core_->GetDevice(),
-            texture.GetWidth() * texture.GetHeight() * sizeof(glm::vec4),
-            VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
-            VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
-                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
-    std::memcpy(texture_image_buffer->Map(), &texture.operator()(0, 0),
-                texture.GetWidth() * texture.GetHeight() * sizeof(glm::vec4));
-    vulkan::UploadImage(core_->GetCommandPool(),
-                        device_texture_sampler.first->GetImage(),
-                        texture_image_buffer.get());
-  }
-  num_loaded_device_textures_ = int(textures.size());
+
+  std::vector<glm::vec2> vertices{
+      {0.0f, 0.0f}, {0.0f, 1.0f}, {1.0f, 0.0f}, {1.0f, 1.0f}};
+  std::vector<uint32_t> indices{0, 1, 2, 1, 2, 3};
+  envmap_vertex_buffer_ =
+      std::make_unique<vulkan::framework::StaticBuffer<glm::vec2>>(core_.get(),
+                                                                   4);
+  envmap_index_buffer_ =
+      std::make_unique<vulkan::framework::StaticBuffer<uint32_t>>(core_.get(),
+                                                                  6);
+  envmap_vertex_buffer_->Upload(vertices.data());
+  envmap_index_buffer_->Upload(indices.data());
+  UpdateDeviceAssets();
   RebuildRenderNode();
 }
 
@@ -136,6 +119,9 @@ void App::OnRender() {
   stencil_clear_color.uint32[0] = 0xffffffffu;
   stencil_buffer_->ClearColor(stencil_clear_color);
   depth_buffer_->ClearDepth({1.0f, 0});
+  envmap_render_node_->Draw(envmap_vertex_buffer_.get(),
+                            envmap_index_buffer_.get(),
+                            envmap_index_buffer_->Size(), 0);
   render_node_->BeginDraw();
   for (int i = 0; i < entity_device_assets_.size(); i++) {
     auto &entity_asset = entity_device_assets_[i];
@@ -180,13 +166,17 @@ void App::UpdateImGui() {
   ImGui::NewFrame();
 
   auto &io = ImGui::GetIO();
-
+  auto &scene = renderer_->GetScene();
   if (global_settings_window_open_) {
     ImGui::Begin("Global Settings", &global_settings_window_open_,
                  ImGuiWindowFlags_NoMove | ImGuiWindowFlags_AlwaysAutoResize);
     ImGui::SetWindowPos({12, 12}, ImGuiCond_Once);
     if (ImGui::CollapsingHeader("Camera")) {
-      renderer_->GetScene().GetCamera().ImGuiItems();
+      scene.GetCamera().ImGuiItems();
+    }
+    if (ImGui::CollapsingHeader("Environment Map")) {
+      ImGui::SliderAngle("Offset", &scene.GetEnvmapOffset(), 0.0f, 360.0f,
+                         "%.0f deg");
     }
     if (selected_entity_id_ != -1) {
       if (ImGui::CollapsingHeader("Material")) {
@@ -214,12 +204,14 @@ void App::UpdateImGui() {
 }
 
 void App::UpdateDynamicBuffer() {
-  global_uniform_buffer_->operator[](0).projection =
-      renderer_->GetScene().GetCamera().GetProjectionMatrix(
-          float(core_->GetFramebufferWidth()) /
-          float(core_->GetFramebufferHeight()));
-  global_uniform_buffer_->operator[](0).camera =
-      glm::inverse(renderer_->GetScene().GetCameraToWorld());
+  GlobalUniformObject guo{};
+  guo.projection = renderer_->GetScene().GetCamera().GetProjectionMatrix(
+      float(core_->GetFramebufferWidth()) /
+      float(core_->GetFramebufferHeight()));
+  guo.camera = glm::inverse(renderer_->GetScene().GetCameraToWorld());
+  guo.envmap_id = renderer_->GetScene().GetEnvmapId();
+  guo.envmap_offset = renderer_->GetScene().GetEnvmapOffset();
+  global_uniform_buffer_->operator[](0) = guo;
   auto &entities = renderer_->GetScene().GetEntities();
   for (int i = 0; i < entities.size(); i++) {
     auto &entity = entities[i];
@@ -280,7 +272,8 @@ void App::UpdateDeviceAssets() {
       device_texture_samplers_.emplace_back(
           std::make_unique<vulkan::framework::TextureImage>(
               core_.get(), texture.GetWidth(), texture.GetHeight()),
-          std::make_unique<vulkan::Sampler>(core_->GetDevice(), filter));
+          std::make_unique<vulkan::Sampler>(core_->GetDevice(), filter,
+                                            VK_SAMPLER_ADDRESS_MODE_REPEAT));
       auto &device_texture_sampler = *device_texture_samplers_.rbegin();
       std::unique_ptr<vulkan::Buffer> texture_image_buffer =
           std::make_unique<vulkan::Buffer>(
@@ -347,6 +340,20 @@ void App::RebuildRenderNode() {
        VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32_SFLOAT});
   render_node_->BuildRenderNode(core_->GetFramebufferWidth(),
                                 core_->GetFramebufferHeight());
+  envmap_render_node_ =
+      std::make_unique<vulkan::framework::RenderNode>(core_.get());
+  envmap_render_node_->AddShader("../../shaders/envmap.frag.spv",
+                                 VK_SHADER_STAGE_FRAGMENT_BIT);
+  envmap_render_node_->AddShader("../../shaders/envmap.vert.spv",
+                                 VK_SHADER_STAGE_VERTEX_BIT);
+  envmap_render_node_->AddUniformBinding(global_uniform_buffer_.get(),
+                                         VK_SHADER_STAGE_FRAGMENT_BIT);
+  envmap_render_node_->AddUniformBinding(binding_texture_samplers_,
+                                         VK_SHADER_STAGE_FRAGMENT_BIT);
+  envmap_render_node_->AddColorAttachment(screen_frame_.get());
+  envmap_render_node_->VertexInput({VK_FORMAT_R32G32_SFLOAT});
+  envmap_render_node_->BuildRenderNode(core_->GetFramebufferWidth(),
+                                       core_->GetFramebufferHeight());
 }
 
 }  // namespace sparks

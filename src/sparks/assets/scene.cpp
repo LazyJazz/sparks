@@ -77,4 +77,19 @@ const glm::mat4 &Scene::GetCameraToWorld() const {
   return camera_to_world_;
 }
 
+int &Scene::GetEnvmapId() {
+  return envmap_id_;
+}
+
+const int &Scene::GetEnvmapId() const {
+  return envmap_id_;
+}
+
+float &Scene::GetEnvmapOffset() {
+  return envmap_offset_;
+}
+const float &Scene::GetEnvmapOffset() const {
+  return envmap_offset_;
+}
+
 }  // namespace sparks

@@ -1,8 +1,8 @@
 #version 450
 #extension GL_GOOGLE_include_directive : require
 #extension GL_EXT_nonuniform_qualifier : enable
-#include "defs.glsl"
 #include "material.glsl"
+#include "uniform_objects.glsl"
 
 layout(location = 0) in flat int instance_id;
 layout(location = 1) in vec3 position;
