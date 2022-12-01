@@ -26,6 +26,8 @@ class App {
   void UpdateDeviceAssets();
   void HandleImGuiIO();
 
+  void RebuildRenderNode();
+
   Renderer *renderer_{nullptr};
 
   std::unique_ptr<vulkan::framework::Core> core_;

@@ -68,17 +68,6 @@ void App::OnInit() {
   core_->ImGuiInit(screen_frame_.get(), "../../fonts/NotoSansSC-Regular.otf",
                    24.0f);
 
-  std::vector<std::pair<vulkan::framework::TextureImage *, vulkan::Sampler *>>
-      binding_texture_samplers_;
-  for (int i = 0; i < 1024; i++) {
-    device_texture_samplers_.emplace_back(
-        std::make_unique<vulkan::framework::TextureImage>(core_.get(), 1, 1),
-        std::make_unique<vulkan::Sampler>(core_->GetDevice()));
-    binding_texture_samplers_.emplace_back(
-        device_texture_samplers_.rbegin()->first.get(),
-        device_texture_samplers_.rbegin()->second.get());
-  }
-
   global_uniform_buffer_ =
       std::make_unique<vulkan::framework::DynamicBuffer<GlobalUniformObject>>(
           core_.get(), 1);
@@ -88,34 +77,38 @@ void App::OnInit() {
   material_uniform_buffer_ =
       std::make_unique<vulkan::framework::DynamicBuffer<Material>>(core_.get(),
                                                                    16384);
-  render_node_ = std::make_unique<vulkan::framework::RenderNode>(core_.get());
-  render_node_->AddShader("../../shaders/scene_view.frag.spv",
-                          VK_SHADER_STAGE_FRAGMENT_BIT);
-  render_node_->AddShader("../../shaders/scene_view.vert.spv",
-                          VK_SHADER_STAGE_VERTEX_BIT);
-  render_node_->AddUniformBinding(global_uniform_buffer_.get(),
-                                  VK_SHADER_STAGE_VERTEX_BIT);
-  render_node_->AddBufferBinding(entity_uniform_buffer_.get(),
-                                 VK_SHADER_STAGE_VERTEX_BIT);
-  render_node_->AddBufferBinding(
-      material_uniform_buffer_.get(),
-      VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
-  render_node_->AddUniformBinding(binding_texture_samplers_,
-                                  VK_SHADER_STAGE_FRAGMENT_BIT);
-  render_node_->AddColorAttachment(screen_frame_.get());
-  render_node_->AddDepthAttachment(depth_buffer_.get());
-  render_node_->AddColorAttachment(
-      stencil_buffer_.get(),
-      VkPipelineColorBlendAttachmentState{
-          VK_FALSE, VK_BLEND_FACTOR_SRC_ALPHA,
-          VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA, VK_BLEND_OP_ADD,
-          VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
-          VK_BLEND_OP_ADD, VK_COLOR_COMPONENT_R_BIT});
-  render_node_->VertexInput(
-      {VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT,
-       VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32_SFLOAT});
-  render_node_->BuildRenderNode(core_->GetFramebufferWidth(),
-                                core_->GetFramebufferHeight());
+  auto &textures = renderer_->GetScene().GetTextures();
+  for (int i = num_loaded_device_textures_; i < textures.size(); i++) {
+    auto &texture = textures[i];
+    VkFilter filter{VK_FILTER_LINEAR};
+    switch (texture.GetSampleType()) {
+      case SAMPLE_TYPE_LINEAR:
+        filter = VK_FILTER_LINEAR;
+        break;
+      case SAMPLE_TYPE_NEAREST:
+        filter = VK_FILTER_NEAREST;
+        break;
+    }
+    device_texture_samplers_.emplace_back(
+        std::make_unique<vulkan::framework::TextureImage>(
+            core_.get(), texture.GetWidth(), texture.GetHeight()),
+        std::make_unique<vulkan::Sampler>(core_->GetDevice(), filter));
+    auto &device_texture_sampler = *device_texture_samplers_.rbegin();
+    std::unique_ptr<vulkan::Buffer> texture_image_buffer =
+        std::make_unique<vulkan::Buffer>(
+            core_->GetDevice(),
+            texture.GetWidth() * texture.GetHeight() * sizeof(glm::vec4),
+            VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+            VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
+                VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+    std::memcpy(texture_image_buffer->Map(), &texture.operator()(0, 0),
+                texture.GetWidth() * texture.GetHeight() * sizeof(glm::vec4));
+    vulkan::UploadImage(core_->GetCommandPool(),
+                        device_texture_sampler.first->GetImage(),
+                        texture_image_buffer.get());
+  }
+  num_loaded_device_textures_ = int(textures.size());
+  RebuildRenderNode();
 }
 
 void App::OnLoop() {
@@ -275,9 +268,20 @@ void App::UpdateDeviceAssets() {
   if (num_loaded_device_textures_ != textures.size()) {
     for (int i = num_loaded_device_textures_; i < textures.size(); i++) {
       auto &texture = textures[i];
-      auto &device_texture_sampler = device_texture_samplers_[i];
-      device_texture_sampler.first->Resize(texture.GetWidth(),
-                                           texture.GetHeight());
+      VkFilter filter{VK_FILTER_LINEAR};
+      switch (texture.GetSampleType()) {
+        case SAMPLE_TYPE_LINEAR:
+          filter = VK_FILTER_LINEAR;
+          break;
+        case SAMPLE_TYPE_NEAREST:
+          filter = VK_FILTER_NEAREST;
+          break;
+      }
+      device_texture_samplers_.emplace_back(
+          std::make_unique<vulkan::framework::TextureImage>(
+              core_.get(), texture.GetWidth(), texture.GetHeight()),
+          std::make_unique<vulkan::Sampler>(core_->GetDevice(), filter));
+      auto &device_texture_sampler = *device_texture_samplers_.rbegin();
       std::unique_ptr<vulkan::Buffer> texture_image_buffer =
           std::make_unique<vulkan::Buffer>(
               core_->GetDevice(),
@@ -290,17 +294,9 @@ void App::UpdateDeviceAssets() {
       vulkan::UploadImage(core_->GetCommandPool(),
                           device_texture_sampler.first->GetImage(),
                           texture_image_buffer.get());
-      switch (texture.GetSampleType()) {
-        case SAMPLE_TYPE_LINEAR:
-          device_texture_sampler.second->Reset(VK_FILTER_LINEAR);
-          break;
-        case SAMPLE_TYPE_NEAREST:
-          device_texture_sampler.second->Reset(VK_FILTER_NEAREST);
-          break;
-      }
     }
-    num_loaded_device_textures_ = int(entities.size());
-    render_node_->UpdateDescriptorSetBinding(3);
+    num_loaded_device_textures_ = int(textures.size());
+    RebuildRenderNode();
   }
 }
 
@@ -314,6 +310,43 @@ void App::HandleImGuiIO() {
       selected_entity_id_ = -1;
     }
   }
+}
+
+void App::RebuildRenderNode() {
+  std::vector<std::pair<vulkan::framework::TextureImage *, vulkan::Sampler *>>
+      binding_texture_samplers_;
+  for (auto &device_texture_sampler : device_texture_samplers_) {
+    binding_texture_samplers_.emplace_back(device_texture_sampler.first.get(),
+                                           device_texture_sampler.second.get());
+  }
+  render_node_ = std::make_unique<vulkan::framework::RenderNode>(core_.get());
+  render_node_->AddShader("../../shaders/scene_view.frag.spv",
+                          VK_SHADER_STAGE_FRAGMENT_BIT);
+  render_node_->AddShader("../../shaders/scene_view.vert.spv",
+                          VK_SHADER_STAGE_VERTEX_BIT);
+  render_node_->AddUniformBinding(global_uniform_buffer_.get(),
+                                  VK_SHADER_STAGE_VERTEX_BIT);
+  render_node_->AddBufferBinding(entity_uniform_buffer_.get(),
+                                 VK_SHADER_STAGE_VERTEX_BIT);
+  render_node_->AddBufferBinding(
+      material_uniform_buffer_.get(),
+      VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+  render_node_->AddUniformBinding(binding_texture_samplers_,
+                                  VK_SHADER_STAGE_FRAGMENT_BIT);
+  render_node_->AddColorAttachment(screen_frame_.get());
+  render_node_->AddDepthAttachment(depth_buffer_.get());
+  render_node_->AddColorAttachment(
+      stencil_buffer_.get(),
+      VkPipelineColorBlendAttachmentState{
+          VK_FALSE, VK_BLEND_FACTOR_SRC_ALPHA,
+          VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA, VK_BLEND_OP_ADD,
+          VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+          VK_BLEND_OP_ADD, VK_COLOR_COMPONENT_R_BIT});
+  render_node_->VertexInput(
+      {VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT,
+       VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32_SFLOAT});
+  render_node_->BuildRenderNode(core_->GetFramebufferWidth(),
+                                core_->GetFramebufferHeight());
 }
 
 }  // namespace sparks
