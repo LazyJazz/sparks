@@ -28,7 +28,7 @@ Mesh Mesh::Sphere(const glm::vec3 &center, float radius) {
   std::vector<glm::vec2> circle;
   for (int i = 0; i <= precision * 2; i++) {
     float omega = inv_precision * float(i) * pi;
-    circle.emplace_back(std::sin(omega), std::cos(omega));
+    circle.emplace_back(-std::sin(omega), -std::cos(omega));
   }
   for (int i = 0; i <= precision; i++) {
     float theta = inv_precision * float(i) * pi;
@@ -36,10 +36,11 @@ Mesh Mesh::Sphere(const glm::vec3 &center, float radius) {
     float cos_theta = std::cos(theta);
     int i_1 = i - 1;
     for (int j = 0; j <= 2 * precision; j++) {
-      auto normal = glm::vec3{circle[j] * sin_theta, cos_theta};
+      auto normal = glm::vec3{circle[j].x * sin_theta, cos_theta,
+                              circle[j].y * sin_theta};
       vertices.push_back(
           Vertex(normal * radius + center, normal,
-                 {float(i) * inv_precision, float(j) * inv_precision * 0.5f}));
+                 {float(j) * inv_precision * 0.5f, float(i) * inv_precision}));
       if (i) {
         int j1 = j + 1;
         if (j == 2 * precision) {

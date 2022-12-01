@@ -23,6 +23,7 @@ class App {
   void UpdateImGui();
   void UpdateDynamicBuffer();
   void UpdateHostStencilBuffer();
+  void UpdateDeviceAssets();
   void HandleImGuiIO();
 
   Renderer *renderer_{nullptr};
@@ -43,6 +44,12 @@ class App {
       material_uniform_buffer_;
 
   std::vector<EntityDeviceAsset> entity_device_assets_;
+  int num_loaded_device_assets_{0};
+
+  std::vector<std::pair<std::unique_ptr<vulkan::framework::TextureImage>,
+                        std::unique_ptr<vulkan::Sampler>>>
+      device_texture_samplers_;
+  int num_loaded_device_textures_{0};
 
   bool global_settings_window_open_{true};
   int hover_entity_id_{-1};
