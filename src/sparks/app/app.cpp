@@ -31,6 +31,11 @@ void App::OnInit() {
       VK_FORMAT_B8G8R8A8_UNORM,
       VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
           VK_IMAGE_USAGE_TRANSFER_SRC_BIT);
+  render_frame_ = std::make_unique<vulkan::framework::TextureImage>(
+      core_.get(), core_->GetFramebufferWidth(), core_->GetFramebufferHeight(),
+      VK_FORMAT_R32G32B32A32_SFLOAT,
+      VK_IMAGE_USAGE_TRANSFER_DST_BIT | VK_IMAGE_USAGE_TRANSFER_SRC_BIT |
+          VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT);
   depth_buffer_ = std::make_unique<vulkan::framework::TextureImage>(
       core_.get(), core_->GetFramebufferWidth(), core_->GetFramebufferHeight(),
       VK_FORMAT_D32_SFLOAT,
@@ -40,7 +45,7 @@ void App::OnInit() {
       core_.get(), core_->GetFramebufferWidth(), core_->GetFramebufferHeight(),
       VK_FORMAT_R32_UINT,
       VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
-          VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT);
+          VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_STORAGE_BIT);
   stencil_device_buffer_ = std::make_unique<vulkan::Buffer>(
       core_->GetDevice(),
       sizeof(uint32_t) * core_->GetFramebufferWidth() *
@@ -54,10 +59,12 @@ void App::OnInit() {
   core_->SetFrameSizeCallback([this](int width, int height) {
     core_->GetDevice()->WaitIdle();
     screen_frame_->Resize(width, height);
+    render_frame_->Resize(width, height);
     depth_buffer_->Resize(width, height);
     stencil_buffer_->Resize(width, height);
     render_node_->BuildRenderNode(width, height);
     envmap_render_node_->BuildRenderNode(width, height);
+    postproc_render_node_->BuildRenderNode(width, height);
     stencil_device_buffer_ = std::make_unique<vulkan::Buffer>(
         core_->GetDevice(), sizeof(uint32_t) * width * height,
         VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
@@ -90,6 +97,11 @@ void App::OnInit() {
                                                                   6);
   envmap_vertex_buffer_->Upload(vertices.data());
   envmap_index_buffer_->Upload(indices.data());
+
+  linear_sampler_ = std::make_unique<vulkan::Sampler>(
+      core_->GetDevice(), VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT);
+  nearest_sampler_ = std::make_unique<vulkan::Sampler>(
+      core_->GetDevice(), VK_FILTER_NEAREST, VK_SAMPLER_ADDRESS_MODE_REPEAT);
   UpdateDeviceAssets();
   RebuildRenderNode();
 }
@@ -114,7 +126,7 @@ void App::OnUpdate(uint32_t ms) {
 
 void App::OnRender() {
   core_->BeginCommandRecord();
-  screen_frame_->ClearColor({0.0f, 0.0f, 0.0f, 1.0f});
+  render_frame_->ClearColor({0.0f, 0.0f, 0.0f, 1.0f});
   VkClearColorValue stencil_clear_color{};
   stencil_clear_color.uint32[0] = 0xffffffffu;
   stencil_buffer_->ClearColor(stencil_clear_color);
@@ -130,6 +142,9 @@ void App::OnRender() {
                              entity_asset.index_buffer->Size(), i);
   }
   render_node_->EndDraw();
+  postproc_render_node_->Draw(envmap_vertex_buffer_.get(),
+                              envmap_index_buffer_.get(),
+                              envmap_index_buffer_->Size(), 0);
   auto command_buffer = core_->GetCommandBuffer();
   vulkan::TransitImageLayout(
       command_buffer->GetHandle(), stencil_buffer_->GetImage()->GetHandle(),
@@ -211,6 +226,8 @@ void App::UpdateDynamicBuffer() {
   guo.camera = glm::inverse(renderer_->GetScene().GetCameraToWorld());
   guo.envmap_id = renderer_->GetScene().GetEnvmapId();
   guo.envmap_offset = renderer_->GetScene().GetEnvmapOffset();
+  guo.hover_id = hover_entity_id_;
+  guo.selected_id = selected_entity_id_;
   global_uniform_buffer_->operator[](0) = guo;
   auto &entities = renderer_->GetScene().GetEntities();
   for (int i = 0; i < entities.size(); i++) {
@@ -326,7 +343,7 @@ void App::RebuildRenderNode() {
       VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
   render_node_->AddUniformBinding(binding_texture_samplers_,
                                   VK_SHADER_STAGE_FRAGMENT_BIT);
-  render_node_->AddColorAttachment(screen_frame_.get());
+  render_node_->AddColorAttachment(render_frame_.get());
   render_node_->AddDepthAttachment(depth_buffer_.get());
   render_node_->AddColorAttachment(
       stencil_buffer_.get(),
@@ -350,10 +367,27 @@ void App::RebuildRenderNode() {
                                          VK_SHADER_STAGE_FRAGMENT_BIT);
   envmap_render_node_->AddUniformBinding(binding_texture_samplers_,
                                          VK_SHADER_STAGE_FRAGMENT_BIT);
-  envmap_render_node_->AddColorAttachment(screen_frame_.get());
+  envmap_render_node_->AddColorAttachment(render_frame_.get());
   envmap_render_node_->VertexInput({VK_FORMAT_R32G32_SFLOAT});
   envmap_render_node_->BuildRenderNode(core_->GetFramebufferWidth(),
                                        core_->GetFramebufferHeight());
+
+  postproc_render_node_ =
+      std::make_unique<vulkan::framework::RenderNode>(core_.get());
+  postproc_render_node_->AddShader("../../shaders/postproc.frag.spv",
+                                   VK_SHADER_STAGE_FRAGMENT_BIT);
+  postproc_render_node_->AddShader("../../shaders/postproc.vert.spv",
+                                   VK_SHADER_STAGE_VERTEX_BIT);
+  postproc_render_node_->AddUniformBinding(global_uniform_buffer_.get(),
+                                           VK_SHADER_STAGE_FRAGMENT_BIT);
+  postproc_render_node_->AddUniformBinding(stencil_buffer_.get(),
+                                           VK_SHADER_STAGE_FRAGMENT_BIT);
+  postproc_render_node_->AddUniformBinding(
+      render_frame_.get(), linear_sampler_.get(), VK_SHADER_STAGE_FRAGMENT_BIT);
+  postproc_render_node_->AddColorAttachment(screen_frame_.get());
+  postproc_render_node_->VertexInput({VK_FORMAT_R32G32_SFLOAT});
+  postproc_render_node_->BuildRenderNode(core_->GetFramebufferWidth(),
+                                         core_->GetFramebufferHeight());
 }
 
 }  // namespace sparks

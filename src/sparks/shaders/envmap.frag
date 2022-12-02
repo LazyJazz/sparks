@@ -24,9 +24,6 @@ void main() {
     x += atan(direction.x, -direction.z);
   }
   x *= INV_PI * 0.5;
-  color_out = vec4(
-      pow(vec3(texture(texture_samplers[nonuniformEXT(global_object.envmap_id)],
-                       vec2(x, y))),
-          vec3(1.0 / 2.2)),
-      1.0);
+  color_out = texture(texture_samplers[nonuniformEXT(global_object.envmap_id)],
+                      vec2(x, y));
 }

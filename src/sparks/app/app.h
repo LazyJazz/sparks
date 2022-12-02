@@ -32,6 +32,7 @@ class App {
 
   std::unique_ptr<vulkan::framework::Core> core_;
   std::unique_ptr<vulkan::framework::TextureImage> screen_frame_;
+  std::unique_ptr<vulkan::framework::TextureImage> render_frame_;
 
   std::unique_ptr<vulkan::framework::RenderNode> render_node_;
   std::unique_ptr<vulkan::framework::TextureImage> depth_buffer_;
@@ -46,10 +47,14 @@ class App {
       material_uniform_buffer_;
 
   std::unique_ptr<vulkan::framework::RenderNode> envmap_render_node_;
+  std::unique_ptr<vulkan::framework::RenderNode> postproc_render_node_;
   std::unique_ptr<vulkan::framework::StaticBuffer<glm::vec2>>
       envmap_vertex_buffer_;
   std::unique_ptr<vulkan::framework::StaticBuffer<uint32_t>>
       envmap_index_buffer_;
+
+  std::unique_ptr<vulkan::Sampler> linear_sampler_;
+  std::unique_ptr<vulkan::Sampler> nearest_sampler_;
 
   std::vector<EntityDeviceAsset> entity_device_assets_;
   int num_loaded_device_assets_{0};

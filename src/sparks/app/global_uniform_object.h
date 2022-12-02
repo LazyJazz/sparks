@@ -7,5 +7,7 @@ struct GlobalUniformObject {
   glm::mat4 camera{1.0f};
   int envmap_id{0};
   float envmap_offset{0.0f};
+  int hover_id{0};
+  int selected_id{0};
 };
 }  // namespace sparks
