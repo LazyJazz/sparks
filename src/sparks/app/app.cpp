@@ -1,5 +1,7 @@
 ﻿#include "sparks/app/app.h"
 
+#include "ImGuizmo.h"
+#include "glm/gtc/matrix_transform.hpp"
 #include "iostream"
 #include "sparks/util/util.h"
 
@@ -102,6 +104,7 @@ void App::OnInit() {
       core_->GetDevice(), VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT);
   nearest_sampler_ = std::make_unique<vulkan::Sampler>(
       core_->GetDevice(), VK_FILTER_NEAREST, VK_SAMPLER_ADDRESS_MODE_REPEAT);
+  ImGuizmo::Enable(true);
   UpdateDeviceAssets();
   RebuildRenderNode();
 }
@@ -179,6 +182,7 @@ void App::UpdateImGui() {
   ImGui_ImplVulkan_NewFrame();
   ImGui_ImplGlfw_NewFrame();
   ImGui::NewFrame();
+  ImGuizmo::BeginFrame();
 
   auto &io = ImGui::GetIO();
   auto &scene = renderer_->GetScene();
@@ -195,12 +199,63 @@ void App::UpdateImGui() {
     }
     if (selected_entity_id_ != -1) {
       if (ImGui::CollapsingHeader("Material")) {
-        Material &material =
-            renderer_->GetScene().GetEntity(selected_entity_id_).GetMaterial();
+        Material &material = scene.GetEntity(selected_entity_id_).GetMaterial();
         ImGui::ColorEdit3(
             "Albedo Color", &material.albedo_color[0],
             ImGuiColorEditFlags_PickerHueWheel | ImGuiColorEditFlags_Float);
       }
+      static ImGuizmo::OPERATION mCurrentGizmoOperation(ImGuizmo::ROTATE);
+      static ImGuizmo::MODE mCurrentGizmoMode(ImGuizmo::WORLD);
+      if (ImGui::IsKeyPressed(ImGuiKey_T))
+        mCurrentGizmoOperation = ImGuizmo::TRANSLATE;
+      if (ImGui::IsKeyPressed(ImGuiKey_R))
+        mCurrentGizmoOperation = ImGuizmo::ROTATE;
+      if (ImGui::IsKeyPressed(ImGuiKey_S))  // r Key
+        mCurrentGizmoOperation = ImGuizmo::SCALE;
+      float matrixTranslation[3], matrixRotation[3], matrixScale[3];
+      auto &matrix = scene.GetEntity(selected_entity_id_).GetTransformMatrix();
+      if (ImGui::CollapsingHeader("Transformation")) {
+        if (ImGui::RadioButton("Translate",
+                               mCurrentGizmoOperation == ImGuizmo::TRANSLATE))
+          mCurrentGizmoOperation = ImGuizmo::TRANSLATE;
+        ImGui::SameLine();
+        if (ImGui::RadioButton("Rotate",
+                               mCurrentGizmoOperation == ImGuizmo::ROTATE))
+          mCurrentGizmoOperation = ImGuizmo::ROTATE;
+        ImGui::SameLine();
+        if (ImGui::RadioButton("Scale",
+                               mCurrentGizmoOperation == ImGuizmo::SCALE))
+          mCurrentGizmoOperation = ImGuizmo::SCALE;
+        ImGuizmo::DecomposeMatrixToComponents(
+            reinterpret_cast<float *>(&matrix), matrixTranslation,
+            matrixRotation, matrixScale);
+        ImGui::InputFloat3("Translation", matrixTranslation);
+        ImGui::InputFloat3("Rotation", matrixRotation);
+        ImGui::InputFloat3("Scale", matrixScale);
+        ImGuizmo::RecomposeMatrixFromComponents(
+            matrixTranslation, matrixRotation, matrixScale,
+            reinterpret_cast<float *>(&matrix));
+
+        if (mCurrentGizmoOperation != ImGuizmo::SCALE) {
+          if (ImGui::RadioButton("Local", mCurrentGizmoMode == ImGuizmo::LOCAL))
+            mCurrentGizmoMode = ImGuizmo::LOCAL;
+          ImGui::SameLine();
+          if (ImGui::RadioButton("World", mCurrentGizmoMode == ImGuizmo::WORLD))
+            mCurrentGizmoMode = ImGuizmo::WORLD;
+        }
+      }
+
+      glm::mat4 imguizmo_view_ = glm::inverse(scene.GetCameraToWorld());
+      glm::mat4 imguizmo_proj_ =
+          glm::scale(glm::mat4{1.0f}, glm::vec3{1.0f, -1.0f, 1.0f}) *
+          scene.GetCamera().GetProjectionMatrix(float(io.DisplaySize.x) /
+                                                float(io.DisplaySize.y));
+      ImGuizmo::SetRect(0, 0, io.DisplaySize.x, io.DisplaySize.y);
+      ImGuizmo::Manipulate(reinterpret_cast<float *>(&imguizmo_view_),
+                           reinterpret_cast<float *>(&imguizmo_proj_),
+                           mCurrentGizmoOperation, mCurrentGizmoMode,
+                           reinterpret_cast<float *>(&matrix), nullptr,
+                           nullptr);
     }
     ImGui::Text("Hover item: %s",
                 (hover_entity_id_ == -1)
@@ -211,10 +266,10 @@ void App::UpdateImGui() {
                     ? "None"
                     : std::to_string(selected_entity_id_).c_str());
     ImGui::Text("Want Capture Mouse: %s", io.WantCaptureMouse ? "yes" : "no");
-    ImGui::Text("Has Mouse Double Clicked: %s",
-                io.MouseClicked[0] ? "yes" : "no");
+    ImGui::Text("Has Mouse Clicked: %s", io.MouseClicked[0] ? "yes" : "no");
     ImGui::End();
   }
+
   ImGui::Render();
 }
 
