@@ -25,6 +25,8 @@ class App {
   void UpdateHostStencilBuffer();
   void UpdateDeviceAssets();
   void HandleImGuiIO();
+  void UpdateImGuizmo();
+  void UpdateCamera();
 
   void RebuildRenderNode();
 

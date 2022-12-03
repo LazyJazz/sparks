@@ -16,14 +16,15 @@ Scene::Scene() {
                   {{1.0f, 0.0f, -1.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}}},
                  {0, 1, 2, 1, 2, 3}),
             Material{}, glm::mat4{1.0f});
-  camera_to_world_ = glm::inverse(glm::lookAt(glm::vec3{2.0f, 1.0f, 3.0f},
-                                              glm::vec3{0.0f, 0.0f, 0.0f},
-                                              glm::vec3{0.0f, 1.0f, 0.0f}));
+  SetCameraToWorld(glm::inverse(glm::lookAt(glm::vec3{2.0f, 1.0f, 3.0f},
+                                            glm::vec3{0.0f, 0.0f, 0.0f},
+                                            glm::vec3{0.0f, 1.0f, 0.0f})));
 
-  Texture moon(SAMPLE_TYPE_LINEAR);
+  Texture moon;
   Texture::Load("../../textures/earth.jpg", moon);
-  AddEntity(Mesh::Sphere(glm::vec3{0.0f, 0.5f, 0.0f}, 0.5f),
-            Material{glm::vec3{1.0f}, AddTexture(moon)}, glm::mat4{1.0f});
+  AddEntity(Mesh::Sphere(glm::vec3{0.0f, 0.0f, 0.0f}, 0.5f),
+            Material{glm::vec3{1.0f}, AddTexture(moon)},
+            glm::translate(glm::mat4{1.0f}, glm::vec3{0.0f, 0.5f, 0.0f}));
 }
 
 int Scene::AddTexture(const Texture &texture) {
@@ -73,8 +74,17 @@ void Scene::SetCamera(const Camera &camera) {
   camera_ = camera;
 }
 
-const glm::mat4 &Scene::GetCameraToWorld() const {
-  return camera_to_world_;
+glm::mat4 Scene::GetCameraToWorld() const {
+  return glm::translate(glm::mat4{1.0f}, camera_position_) *
+         ComposeRotation(camera_pitch_yaw_roll_) *
+         glm::scale(glm::mat4{1.0f}, glm::vec3{1.0f, 1.0f, 1.0f});
+}
+
+void Scene::SetCameraToWorld(const glm::mat4 &camera_to_world) {
+  camera_pitch_yaw_roll_ = DecomposeRotation(
+      camera_to_world *
+      glm::scale(glm::mat4{1.0f}, glm::vec3{1.0f, 1.0f, 1.0f}));
+  camera_position_ = camera_to_world[3];
 }
 
 int &Scene::GetEnvmapId() {
@@ -88,8 +98,22 @@ const int &Scene::GetEnvmapId() const {
 float &Scene::GetEnvmapOffset() {
   return envmap_offset_;
 }
+
 const float &Scene::GetEnvmapOffset() const {
   return envmap_offset_;
+}
+
+glm::vec3 &Scene::GetCameraPosition() {
+  return camera_position_;
+}
+const glm::vec3 &Scene::GetCameraPosition() const {
+  return camera_position_;
+}
+glm::vec3 &Scene::GetCameraPitchYawRoll() {
+  return camera_pitch_yaw_roll_;
+}
+const glm::vec3 &Scene::GetCameraPitchYawRoll() const {
+  return camera_pitch_yaw_roll_;
 }
 
 }  // namespace sparks

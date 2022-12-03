@@ -5,6 +5,7 @@
 #include "sparks/assets/material.h"
 #include "sparks/assets/mesh.h"
 #include "sparks/assets/texture.h"
+#include "sparks/assets/util.h"
 #include "vector"
 
 namespace sparks {
@@ -29,12 +30,17 @@ class Scene {
 
   void SetCamera(const Camera &camera);
   Camera &GetCamera();
-  [[nodiscard]] const glm::mat4 &GetCameraToWorld() const;
+  [[nodiscard]] glm::mat4 GetCameraToWorld() const;
+  void SetCameraToWorld(const glm::mat4 &camera_to_world);
 
   int &GetEnvmapId();
   [[nodiscard]] const int &GetEnvmapId() const;
   float &GetEnvmapOffset();
   [[nodiscard]] const float &GetEnvmapOffset() const;
+  glm::vec3 &GetCameraPosition();
+  [[nodiscard]] const glm::vec3 &GetCameraPosition() const;
+  glm::vec3 &GetCameraPitchYawRoll();
+  [[nodiscard]] const glm::vec3 &GetCameraPitchYawRoll() const;
 
   void Clear();
 
@@ -43,7 +49,8 @@ class Scene {
   std::vector<Entity> entities_;
   int envmap_id_{0};
   float envmap_offset_{0.0f};
-  glm::mat4 camera_to_world_{1.0f};
+  glm::vec3 camera_position_{0.0f};
+  glm::vec3 camera_pitch_yaw_roll_{0.0f, 0.0f, 0.0f};
   Camera camera_{};
 };
 }  // namespace sparks

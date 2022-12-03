@@ -1,6 +1,7 @@
 #include "absl/flags/flag.h"
 #include "absl/flags/parse.h"
 #include "absl/flags/usage.h"
+#include "glm/gtc/matrix_transform.hpp"
 #include "iostream"
 #include "sparks/sparks.h"
 #include "tiny_obj_loader.h"
