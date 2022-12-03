@@ -188,9 +188,12 @@ void App::UpdateImGui() {
   auto &io = ImGui::GetIO();
   auto &scene = renderer_->GetScene();
   if (global_settings_window_open_) {
+    ImGui::SetNextWindowPos({12, 12}, ImGuiCond_Once);
+    ImGui::SetNextWindowSize({240, 0}, ImGuiCond_Once);
     ImGui::Begin("Global Settings", &global_settings_window_open_,
-                 ImGuiWindowFlags_NoMove | ImGuiWindowFlags_AlwaysAutoResize);
-    ImGui::SetWindowPos({12, 12}, ImGuiCond_Once);
+                 ImGuiWindowFlags_NoMove | ImGuiWindowFlags_AlwaysAutoResize |
+                     ImGuiWindowFlags_NoResize);
+
     if (ImGui::CollapsingHeader("Camera")) {
       scene.GetCamera().ImGuiItems();
     }
@@ -207,23 +210,31 @@ void App::UpdateImGui() {
       }
       UpdateImGuizmo();
     }
-    ImGui::Text("Hover item: %s",
-                (hover_entity_id_ == -1)
-                    ? "None"
-                    : std::to_string(hover_entity_id_).c_str());
-    ImGui::Text("Selected item: %s",
-                (selected_entity_id_ == -1)
-                    ? "None"
-                    : std::to_string(selected_entity_id_).c_str());
-    ImGui::Text("Want Capture Mouse: %s", io.WantCaptureMouse ? "yes" : "no");
-    ImGui::Text("Has Mouse Clicked: %s", io.MouseClicked[0] ? "yes" : "no");
-    ImGui::Text("Is Any Item Active: %s",
-                ImGui::IsAnyItemActive() ? "yes" : "no");
-    ImGui::Text("Is Any Item Focused: %s",
-                ImGui::IsAnyItemFocused() ? "yes" : "no");
-    ImGui::Text("Is Any Item Hovered: %s",
-                ImGui::IsAnyItemHovered() ? "yes" : "no");
+    if (ImGui::CollapsingHeader("Debug Info")) {
+      ImGui::Text("Hover item: %s",
+                  (hover_entity_id_ == -1)
+                      ? "None"
+                      : std::to_string(hover_entity_id_).c_str());
+      ImGui::Text("Selected item: %s",
+                  (selected_entity_id_ == -1)
+                      ? "None"
+                      : std::to_string(selected_entity_id_).c_str());
+      ImGui::Text("Want Capture Mouse: %s", io.WantCaptureMouse ? "yes" : "no");
+      ImGui::Text("Has Mouse Clicked: %s", io.MouseClicked[0] ? "yes" : "no");
+      ImGui::Text("Is Any Item Active: %s",
+                  ImGui::IsAnyItemActive() ? "yes" : "no");
+      ImGui::Text("Is Any Item Focused: %s",
+                  ImGui::IsAnyItemFocused() ? "yes" : "no");
+      ImGui::Text("Is Any Item Hovered: %s",
+                  ImGui::IsAnyItemHovered() ? "yes" : "no");
+      ImGui::Text("Mouse Wheel: %f", io.MouseWheel);
+      ImGui::Text("Mouse Wheel H: %f", io.MouseWheelH);
+    }
     ImGui::End();
+  }
+
+  if (!io.WantCaptureMouse) {
+    scene.GetCamera().UpdateFov(-io.MouseWheel);
   }
 
   ImGui::Render();
