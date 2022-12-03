@@ -188,57 +188,76 @@ void App::UpdateImGui() {
 
   auto &io = ImGui::GetIO();
   auto &scene = renderer_->GetScene();
+  if (ImGui::IsKeyPressed(ImGuiKey_G)) {
+    global_settings_window_open_ = !global_settings_window_open_;
+  }
+
   if (global_settings_window_open_) {
-    ImGui::SetNextWindowPos({12, 12}, ImGuiCond_Once);
-    ImGui::SetNextWindowSize({240, 0}, ImGuiCond_Once);
+    ImGui::SetNextWindowPos({0, 0}, ImGuiCond_Once);
+    ImGui::SetNextWindowBgAlpha(0.3);
     ImGui::Begin("Global Settings", &global_settings_window_open_,
                  ImGuiWindowFlags_NoMove | ImGuiWindowFlags_AlwaysAutoResize |
                      ImGuiWindowFlags_NoResize);
+    ImGui::Text("Notice:");
+    ImGui::Text("W/A/S/D/LCTRL/SPACE for camera movement.");
+    ImGui::Text("Cursor drag on frame for camera rotation.");
+    ImGui::Text("G for show/hide GUI windows.");
 
-    if (ImGui::CollapsingHeader("Camera")) {
-      scene.GetCamera().ImGuiItems();
-      ImGui::InputFloat3("Position",
-                         reinterpret_cast<float *>(&scene.GetCameraPosition()));
-      ImGui::SliderAngle("Pitch", &scene.GetCameraPitchYawRoll().x, -90.0f,
-                         90.0f);
-      ImGui::SliderAngle("Yaw", &scene.GetCameraPitchYawRoll().y, 0.0f, 360.0f);
-      ImGui::SliderAngle("Roll", &scene.GetCameraPitchYawRoll().z, -180.0f,
-                         180.0f);
-    }
-    if (ImGui::CollapsingHeader("Environment Map")) {
-      ImGui::SliderAngle("Offset", &scene.GetEnvmapOffset(), 0.0f, 360.0f,
-                         "%.0f deg");
-    }
+    ImGui::NewLine();
+    ImGui::Text("Camera");
+    ImGui::Separator();
+    scene.GetCamera().ImGuiItems();
+    ImGui::InputFloat3("Position",
+                       reinterpret_cast<float *>(&scene.GetCameraPosition()));
+    ImGui::SliderAngle("Pitch", &scene.GetCameraPitchYawRoll().x, -90.0f,
+                       90.0f);
+    ImGui::SliderAngle("Yaw", &scene.GetCameraPitchYawRoll().y, 0.0f, 360.0f);
+    ImGui::SliderAngle("Roll", &scene.GetCameraPitchYawRoll().z, -180.0f,
+                       180.0f);
+
+    ImGui::NewLine();
+    ImGui::Text("Environment Map");
+    ImGui::Separator();
+    ImGui::SliderAngle("Offset", &scene.GetEnvmapOffset(), 0.0f, 360.0f,
+                       "%.0f deg");
+
     if (selected_entity_id_ != -1) {
-      if (ImGui::CollapsingHeader("Material")) {
-        Material &material = scene.GetEntity(selected_entity_id_).GetMaterial();
-        ImGui::ColorEdit3(
-            "Albedo Color", &material.albedo_color[0],
-            ImGuiColorEditFlags_PickerHueWheel | ImGuiColorEditFlags_Float);
-      }
+      ImGui::NewLine();
+      ImGui::Text("Material");
+      ImGui::Separator();
+      Material &material = scene.GetEntity(selected_entity_id_).GetMaterial();
+      ImGui::ColorEdit3(
+          "Albedo Color", &material.albedo_color[0],
+          ImGuiColorEditFlags_PickerHueWheel | ImGuiColorEditFlags_Float);
+    }
+
+    ImGui::NewLine();
+    ImGui::Text("Debug Info");
+    ImGui::Separator();
+    ImGui::Text("Hover item: %s",
+                (hover_entity_id_ == -1)
+                    ? "None"
+                    : std::to_string(hover_entity_id_).c_str());
+    ImGui::Text("Selected item: %s",
+                (selected_entity_id_ == -1)
+                    ? "None"
+                    : std::to_string(selected_entity_id_).c_str());
+    ImGui::Text("Want Capture Mouse: %s", io.WantCaptureMouse ? "yes" : "no");
+    ImGui::Text("Has Mouse Clicked: %s", io.MouseClicked[0] ? "yes" : "no");
+    ImGui::Text("Is Any Item Active: %s",
+                ImGui::IsAnyItemActive() ? "yes" : "no");
+    ImGui::Text("Is Any Item Focused: %s",
+                ImGui::IsAnyItemFocused() ? "yes" : "no");
+    ImGui::Text("Is Any Item Hovered: %s",
+                ImGui::IsAnyItemHovered() ? "yes" : "no");
+    ImGui::Text("Mouse Wheel: %f", io.MouseWheel);
+    ImGui::Text("Mouse Wheel H: %f", io.MouseWheelH);
+
+    ImGui::End();
+
+    if (selected_entity_id_ != -1) {
       UpdateImGuizmo();
     }
-    if (ImGui::CollapsingHeader("Debug Info")) {
-      ImGui::Text("Hover item: %s",
-                  (hover_entity_id_ == -1)
-                      ? "None"
-                      : std::to_string(hover_entity_id_).c_str());
-      ImGui::Text("Selected item: %s",
-                  (selected_entity_id_ == -1)
-                      ? "None"
-                      : std::to_string(selected_entity_id_).c_str());
-      ImGui::Text("Want Capture Mouse: %s", io.WantCaptureMouse ? "yes" : "no");
-      ImGui::Text("Has Mouse Clicked: %s", io.MouseClicked[0] ? "yes" : "no");
-      ImGui::Text("Is Any Item Active: %s",
-                  ImGui::IsAnyItemActive() ? "yes" : "no");
-      ImGui::Text("Is Any Item Focused: %s",
-                  ImGui::IsAnyItemFocused() ? "yes" : "no");
-      ImGui::Text("Is Any Item Hovered: %s",
-                  ImGui::IsAnyItemHovered() ? "yes" : "no");
-      ImGui::Text("Mouse Wheel: %f", io.MouseWheel);
-      ImGui::Text("Mouse Wheel H: %f", io.MouseWheelH);
-    }
-    ImGui::End();
   }
 
   if (!io.WantCaptureMouse) {
@@ -424,6 +443,13 @@ void App::RebuildRenderNode() {
                                          core_->GetFramebufferHeight());
 }
 void App::UpdateImGuizmo() {
+  ImGui::SetNextWindowPos(ImVec2(ImGui::GetIO().DisplaySize.x, 0.0f),
+                          ImGuiCond_Always, ImVec2(1.0f, 0.0f));
+  ImGui::SetNextWindowBgAlpha(0.3);
+
+  ImGui::Begin("Gizmo", &global_settings_window_open_,
+               ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove);
+
   static ImGuizmo::OPERATION current_guizmo_operation(ImGuizmo::ROTATE);
   static ImGuizmo::MODE current_guizmo_mode(ImGuizmo::WORLD);
   if (ImGui::IsKeyPressed(ImGuiKey_T))
@@ -436,35 +462,33 @@ void App::UpdateImGuizmo() {
   auto &scene = renderer_->GetScene();
   auto &matrix = scene.GetEntity(selected_entity_id_).GetTransformMatrix();
   auto &io = ImGui::GetIO();
-  if (ImGui::CollapsingHeader("Transformation")) {
-    if (ImGui::RadioButton("Translate",
-                           current_guizmo_operation == ImGuizmo::TRANSLATE))
-      current_guizmo_operation = ImGuizmo::TRANSLATE;
-    ImGui::SameLine();
-    if (ImGui::RadioButton("Rotate",
-                           current_guizmo_operation == ImGuizmo::ROTATE))
-      current_guizmo_operation = ImGuizmo::ROTATE;
-    ImGui::SameLine();
-    if (ImGui::RadioButton("Scale",
-                           current_guizmo_operation == ImGuizmo::SCALE))
-      current_guizmo_operation = ImGuizmo::SCALE;
-    ImGuizmo::DecomposeMatrixToComponents(reinterpret_cast<float *>(&matrix),
-                                          matrixTranslation, matrixRotation,
-                                          matrixScale);
-    ImGui::InputFloat3("Translation", matrixTranslation);
-    ImGui::InputFloat3("Rotation", matrixRotation);
-    ImGui::InputFloat3("Scale", matrixScale);
-    ImGuizmo::RecomposeMatrixFromComponents(matrixTranslation, matrixRotation,
-                                            matrixScale,
-                                            reinterpret_cast<float *>(&matrix));
 
-    if (current_guizmo_operation != ImGuizmo::SCALE) {
-      if (ImGui::RadioButton("Local", current_guizmo_mode == ImGuizmo::LOCAL))
-        current_guizmo_mode = ImGuizmo::LOCAL;
-      ImGui::SameLine();
-      if (ImGui::RadioButton("World", current_guizmo_mode == ImGuizmo::WORLD))
-        current_guizmo_mode = ImGuizmo::WORLD;
-    }
+  if (ImGui::RadioButton("Translate",
+                         current_guizmo_operation == ImGuizmo::TRANSLATE))
+    current_guizmo_operation = ImGuizmo::TRANSLATE;
+  ImGui::SameLine();
+  if (ImGui::RadioButton("Rotate",
+                         current_guizmo_operation == ImGuizmo::ROTATE))
+    current_guizmo_operation = ImGuizmo::ROTATE;
+  ImGui::SameLine();
+  if (ImGui::RadioButton("Scale", current_guizmo_operation == ImGuizmo::SCALE))
+    current_guizmo_operation = ImGuizmo::SCALE;
+  ImGuizmo::DecomposeMatrixToComponents(reinterpret_cast<float *>(&matrix),
+                                        matrixTranslation, matrixRotation,
+                                        matrixScale);
+  ImGui::InputFloat3("Translation", matrixTranslation);
+  ImGui::InputFloat3("Rotation", matrixRotation);
+  ImGui::InputFloat3("Scale", matrixScale);
+  ImGuizmo::RecomposeMatrixFromComponents(matrixTranslation, matrixRotation,
+                                          matrixScale,
+                                          reinterpret_cast<float *>(&matrix));
+
+  if (current_guizmo_operation != ImGuizmo::SCALE) {
+    if (ImGui::RadioButton("Local", current_guizmo_mode == ImGuizmo::LOCAL))
+      current_guizmo_mode = ImGuizmo::LOCAL;
+    ImGui::SameLine();
+    if (ImGui::RadioButton("World", current_guizmo_mode == ImGuizmo::WORLD))
+      current_guizmo_mode = ImGuizmo::WORLD;
   }
 
   glm::mat4 imguizmo_view_ = glm::inverse(scene.GetCameraToWorld());
@@ -477,6 +501,7 @@ void App::UpdateImGuizmo() {
                        reinterpret_cast<float *>(&imguizmo_proj_),
                        current_guizmo_operation, current_guizmo_mode,
                        reinterpret_cast<float *>(&matrix), nullptr, nullptr);
+  ImGui::End();
 }
 
 void App::UpdateCamera() {
