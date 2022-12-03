@@ -120,6 +120,7 @@ void App::OnLoop() {
 }
 
 void App::OnUpdate(uint32_t ms) {
+  UpdateEnvmapConfiguration();
   UpdateImGui();
   UpdateDynamicBuffer();
   UpdateHostStencilBuffer();
@@ -196,6 +197,13 @@ void App::UpdateImGui() {
 
     if (ImGui::CollapsingHeader("Camera")) {
       scene.GetCamera().ImGuiItems();
+      ImGui::InputFloat3("Position",
+                         reinterpret_cast<float *>(&scene.GetCameraPosition()));
+      ImGui::SliderAngle("Pitch", &scene.GetCameraPitchYawRoll().x, -90.0f,
+                         90.0f);
+      ImGui::SliderAngle("Yaw", &scene.GetCameraPitchYawRoll().y, 0.0f, 360.0f);
+      ImGui::SliderAngle("Roll", &scene.GetCameraPitchYawRoll().z, -180.0f,
+                         180.0f);
     }
     if (ImGui::CollapsingHeader("Environment Map")) {
       ImGui::SliderAngle("Offset", &scene.GetEnvmapOffset(), 0.0f, 360.0f,
@@ -250,6 +258,9 @@ void App::UpdateDynamicBuffer() {
   guo.envmap_offset = renderer_->GetScene().GetEnvmapOffset();
   guo.hover_id = hover_entity_id_;
   guo.selected_id = selected_entity_id_;
+  guo.envmap_light_direction = envmap_light_direction_;
+  guo.envmap_minor_color = envmap_minor_color_;
+  guo.envmap_major_color = envmap_major_color_;
   global_uniform_buffer_->operator[](0) = guo;
   auto &entities = renderer_->GetScene().GetEntities();
   for (int i = 0; i < entities.size(); i++) {
@@ -356,8 +367,9 @@ void App::RebuildRenderNode() {
                           VK_SHADER_STAGE_FRAGMENT_BIT);
   render_node_->AddShader("../../shaders/scene_view.vert.spv",
                           VK_SHADER_STAGE_VERTEX_BIT);
-  render_node_->AddUniformBinding(global_uniform_buffer_.get(),
-                                  VK_SHADER_STAGE_VERTEX_BIT);
+  render_node_->AddUniformBinding(
+      global_uniform_buffer_.get(),
+      VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
   render_node_->AddBufferBinding(entity_uniform_buffer_.get(),
                                  VK_SHADER_STAGE_VERTEX_BIT);
   render_node_->AddBufferBinding(
@@ -514,7 +526,7 @@ void App::UpdateCamera() {
     }
   }
 
-  auto rotation_scale = 1.0f / float(core_->GetFramebufferHeight());
+  auto rotation_scale = 1.0f / float(core_->GetWindowHeight());
   if (!io.WantCaptureMouse) {
     if (ImGui::IsKeyDown(ImGuiKey_MouseLeft)) {
       pitch_yaw_roll.x -= diff.y * rotation_scale;
@@ -525,6 +537,69 @@ void App::UpdateCamera() {
                                 glm::pi<float>() * 0.5f);
   pitch_yaw_roll.y = glm::mod(pitch_yaw_roll.y, glm::pi<float>() * 2.0f);
   pitch_yaw_roll.z = glm::mod(pitch_yaw_roll.z, glm::pi<float>() * 2.0f);
+}
+
+void App::UpdateEnvmapConfiguration() {
+  if (envmap_require_configure_) {
+    const auto &scene = renderer_->GetScene();
+    auto envmap_id = scene.GetEnvmapId();
+    auto &envmap_texture = scene.GetTextures()[envmap_id];
+    auto buffer = envmap_texture.GetBuffer();
+
+    envmap_minor_color_ = glm::vec3{0.0f};
+    envmap_major_color_ = glm::vec3{0.0f};
+    envmap_cdf_.resize(envmap_texture.GetWidth() * envmap_texture.GetHeight());
+
+    std::vector<float> sample_scale_(envmap_texture.GetHeight() + 1);
+    auto inv_width = 1.0f / float(envmap_texture.GetWidth());
+    auto inv_height = 1.0f / float(envmap_texture.GetHeight());
+    for (int i = 0; i <= envmap_texture.GetHeight(); i++) {
+      float x = float(i) * glm::pi<float>() * inv_height;
+      sample_scale_[i] = -std::cos(x);
+    }
+
+    auto width_height = envmap_texture.GetWidth() * envmap_texture.GetHeight();
+    float total_weight = 0.0f;
+    float major_strength = -1.0f;
+    for (int y = 0; y < envmap_texture.GetHeight(); y++) {
+      auto scale = sample_scale_[y + 1] - sample_scale_[y];
+
+      auto theta = (float(y) + 0.5f) * inv_height * glm::pi<float>();
+      auto sin_theta = std::sin(theta);
+      auto cos_theta = std::cos(theta);
+
+      for (int x = 0; x < envmap_texture.GetWidth(); x++) {
+        auto phi = (float(x) + 0.5f) * inv_width * glm::pi<float>() * 2.0f;
+        auto sin_phi = std::sin(phi);
+        auto cos_phi = std::cos(phi);
+
+        auto i = y * envmap_texture.GetWidth() + x;
+        auto color = glm::vec3{buffer[i]};
+        auto minor_color = glm::clamp(color, 0.0f, 1.0f);
+        auto major_color = color - minor_color;
+        envmap_major_color_ += major_color * (scale * inv_width);
+        envmap_minor_color_ += minor_color * (scale * inv_width);
+        color *= scale;
+
+        auto strength = std::max(color.x, std::max(color.y, color.z));
+        if (strength > major_strength) {
+          envmap_light_direction_ = {sin_theta * sin_phi, cos_theta,
+                                     -sin_theta * cos_phi};
+          major_strength = strength;
+        }
+
+        total_weight += strength * scale;
+        envmap_cdf_[i] = total_weight;
+      }
+    }
+
+    auto inv_total_weight = 1.0f / total_weight;
+    for (auto &v : envmap_cdf_) {
+      v *= inv_total_weight;
+    }
+
+    envmap_require_configure_ = false;
+  }
 }
 
 }  // namespace sparks

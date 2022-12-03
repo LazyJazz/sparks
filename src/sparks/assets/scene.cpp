@@ -1,4 +1,4 @@
-#include "sparks/assets/scene.h"
+﻿#include "sparks/assets/scene.h"
 
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
@@ -8,7 +8,8 @@ namespace sparks {
 Scene::Scene() {
   textures_.push_back(Texture(1, 1, glm::vec4{1.0f}, SAMPLE_TYPE_LINEAR));
   Texture envmap(SAMPLE_TYPE_LINEAR);
-  Texture::Load("../../textures/envmap_parking_lot_5120.hdr", envmap);
+  Texture::Load(u8"../../textures/envmap_clouds_4k.hdr", envmap);
+  envmap.SetSampleType(SAMPLE_TYPE_LINEAR);
   envmap_id_ = AddTexture(envmap);
   AddEntity(Mesh({{{-1.0f, 0.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
                   {{-1.0f, 0.0f, -1.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f}},

@@ -27,6 +27,7 @@ class App {
   void HandleImGuiIO();
   void UpdateImGuizmo();
   void UpdateCamera();
+  void UpdateEnvmapConfiguration();
 
   void RebuildRenderNode();
 
@@ -65,6 +66,12 @@ class App {
                         std::unique_ptr<vulkan::Sampler>>>
       device_texture_samplers_;
   int num_loaded_device_textures_{0};
+
+  std::vector<float> envmap_cdf_;
+  glm::vec3 envmap_light_direction_{0.0f, 1.0f, 0.0f};
+  glm::vec3 envmap_major_color_{0.5f};
+  glm::vec3 envmap_minor_color_{0.3f};
+  bool envmap_require_configure_{true};
 
   bool global_settings_window_open_{true};
   int hover_entity_id_{-1};
