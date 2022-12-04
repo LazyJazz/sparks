@@ -28,6 +28,8 @@ void App::Run() {
 }
 
 void App::OnInit() {
+  renderer_->StartWorkerThreads();
+
   screen_frame_ = std::make_unique<vulkan::framework::TextureImage>(
       core_.get(), core_->GetFramebufferWidth(), core_->GetFramebufferHeight(),
       VK_FORMAT_B8G8R8A8_UNORM,
@@ -57,6 +59,32 @@ void App::OnInit() {
           VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
   stencil_host_buffer_.resize(core_->GetFramebufferWidth() *
                               core_->GetFramebufferHeight());
+  renderer_->Resize(core_->GetFramebufferWidth(),
+                    core_->GetFramebufferHeight());
+  accumulation_number_ = std::make_unique<vulkan::framework::TextureImage>(
+      core_.get(), core_->GetFramebufferWidth(), core_->GetFramebufferHeight(),
+      VK_FORMAT_R32_SFLOAT,
+      VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+          VK_IMAGE_USAGE_STORAGE_BIT);
+  accumulation_color_ = std::make_unique<vulkan::framework::TextureImage>(
+      core_.get(), core_->GetFramebufferWidth(), core_->GetFramebufferHeight(),
+      VK_FORMAT_R32G32B32A32_SFLOAT,
+      VK_IMAGE_USAGE_TRANSFER_SRC_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT |
+          VK_IMAGE_USAGE_STORAGE_BIT);
+  host_accumulation_color_ = std::make_unique<vulkan::Buffer>(
+      core_->GetDevice(),
+      core_->GetFramebufferWidth() * core_->GetFramebufferHeight() *
+          sizeof(glm::vec4),
+      VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+      VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
+          VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+  host_accumulation_number_ = std::make_unique<vulkan::Buffer>(
+      core_->GetDevice(),
+      core_->GetFramebufferWidth() * core_->GetFramebufferHeight() *
+          sizeof(float),
+      VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+      VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
+          VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 
   core_->SetFrameSizeCallback([this](int width, int height) {
     core_->GetDevice()->WaitIdle();
@@ -73,6 +101,20 @@ void App::OnInit() {
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
             VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
     stencil_host_buffer_.resize(width * height);
+    renderer_->Resize(width, height);
+    accumulation_color_->Resize(width, height);
+    accumulation_number_->Resize(width, height);
+    host_accumulation_color_ = std::make_unique<vulkan::Buffer>(
+        core_->GetDevice(), width * height * sizeof(glm::vec4),
+        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+        VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+    host_accumulation_number_ = std::make_unique<vulkan::Buffer>(
+        core_->GetDevice(), width * height * sizeof(float),
+        VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
+        VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
+    host_result_render_node_->BuildRenderNode(width, height);
   });
 
   core_->ImGuiInit(screen_frame_.get(), "../../fonts/NotoSansSC-Regular.otf",
@@ -127,6 +169,7 @@ void App::OnUpdate(uint32_t ms) {
   UpdateDeviceAssets();
   HandleImGuiIO();
   UpdateCamera();
+  UploadAccumulationResult();
 }
 
 void App::OnRender() {
@@ -147,6 +190,11 @@ void App::OnRender() {
                              entity_asset.index_buffer->Size(), i);
   }
   render_node_->EndDraw();
+  if (output_render_result_) {
+    host_result_render_node_->Draw(envmap_vertex_buffer_.get(),
+                                   envmap_index_buffer_.get(),
+                                   envmap_index_buffer_->Size(), 0);
+  }
   postproc_render_node_->Draw(envmap_vertex_buffer_.get(),
                               envmap_index_buffer_.get(),
                               envmap_index_buffer_->Size(), 0);
@@ -178,6 +226,7 @@ void App::OnClose() {
   global_uniform_buffer_.reset();
   entity_uniform_buffer_.reset();
   screen_frame_.reset();
+  renderer_->StopWorkers();
 }
 
 void App::UpdateImGui() {
@@ -202,6 +251,17 @@ void App::UpdateImGui() {
     ImGui::Text("W/A/S/D/LCTRL/SPACE for camera movement.");
     ImGui::Text("Cursor drag on frame for camera rotation.");
     ImGui::Text("G for show/hide GUI windows.");
+
+    ImGui::NewLine();
+    ImGui::Text("Renderer");
+    ImGui::Separator();
+    if (ImGui::RadioButton("Preview", !output_render_result_)) {
+      output_render_result_ = false;
+    }
+    ImGui::SameLine();
+    if (ImGui::RadioButton("Renderer", output_render_result_)) {
+      output_render_result_ = true;
+    }
 
     ImGui::NewLine();
     ImGui::Text("Camera");
@@ -231,6 +291,7 @@ void App::UpdateImGui() {
           ImGuiColorEditFlags_PickerHueWheel | ImGuiColorEditFlags_Float);
     }
 
+#if !defined(NDEBUG)
     ImGui::NewLine();
     ImGui::Text("Debug Info");
     ImGui::Separator();
@@ -252,6 +313,7 @@ void App::UpdateImGui() {
                 ImGui::IsAnyItemHovered() ? "yes" : "no");
     ImGui::Text("Mouse Wheel: %f", io.MouseWheel);
     ImGui::Text("Mouse Wheel H: %f", io.MouseWheelH);
+#endif
 
     ImGui::End();
 
@@ -441,6 +503,21 @@ void App::RebuildRenderNode() {
   postproc_render_node_->VertexInput({VK_FORMAT_R32G32_SFLOAT});
   postproc_render_node_->BuildRenderNode(core_->GetFramebufferWidth(),
                                          core_->GetFramebufferHeight());
+
+  host_result_render_node_ =
+      std::make_unique<vulkan::framework::RenderNode>(core_.get());
+  host_result_render_node_->AddShader("../../shaders/host_result.vert.spv",
+                                      VK_SHADER_STAGE_VERTEX_BIT);
+  host_result_render_node_->AddShader("../../shaders/host_result.frag.spv",
+                                      VK_SHADER_STAGE_FRAGMENT_BIT);
+  host_result_render_node_->AddUniformBinding(accumulation_number_.get(),
+                                              VK_SHADER_STAGE_FRAGMENT_BIT);
+  host_result_render_node_->AddUniformBinding(accumulation_color_.get(),
+                                              VK_SHADER_STAGE_FRAGMENT_BIT);
+  host_result_render_node_->AddColorAttachment(render_frame_.get());
+  host_result_render_node_->VertexInput({VK_FORMAT_R32G32_SFLOAT});
+  host_result_render_node_->BuildRenderNode(core_->GetFramebufferWidth(),
+                                            core_->GetFramebufferHeight());
 }
 void App::UpdateImGuizmo() {
   ImGui::SetNextWindowPos(ImVec2(ImGui::GetIO().DisplaySize.x, 0.0f),
@@ -625,6 +702,18 @@ void App::UpdateEnvmapConfiguration() {
 
     envmap_require_configure_ = false;
   }
+}
+
+void App::UploadAccumulationResult() {
+  renderer_->RetrieveAccumulationResult(
+      reinterpret_cast<glm::vec4 *>(host_accumulation_color_->Map()),
+      reinterpret_cast<float *>(host_accumulation_number_->Map()));
+  host_accumulation_number_->Unmap();
+  host_accumulation_color_->Unmap();
+  vulkan::UploadImage(core_->GetCommandPool(), accumulation_color_->GetImage(),
+                      host_accumulation_color_.get());
+  vulkan::UploadImage(core_->GetCommandPool(), accumulation_number_->GetImage(),
+                      host_accumulation_number_.get());
 }
 
 }  // namespace sparks

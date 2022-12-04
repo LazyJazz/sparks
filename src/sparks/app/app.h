@@ -28,6 +28,7 @@ class App {
   void UpdateImGuizmo();
   void UpdateCamera();
   void UpdateEnvmapConfiguration();
+  void UploadAccumulationResult();
 
   void RebuildRenderNode();
 
@@ -48,6 +49,12 @@ class App {
       entity_uniform_buffer_;
   std::unique_ptr<vulkan::framework::DynamicBuffer<Material>>
       material_uniform_buffer_;
+
+  std::unique_ptr<vulkan::framework::RenderNode> host_result_render_node_;
+  std::unique_ptr<vulkan::framework::TextureImage> accumulation_color_;
+  std::unique_ptr<vulkan::framework::TextureImage> accumulation_number_;
+  std::unique_ptr<vulkan::Buffer> host_accumulation_color_;
+  std::unique_ptr<vulkan::Buffer> host_accumulation_number_;
 
   std::unique_ptr<vulkan::framework::RenderNode> envmap_render_node_;
   std::unique_ptr<vulkan::framework::RenderNode> postproc_render_node_;
@@ -76,5 +83,7 @@ class App {
   bool global_settings_window_open_{true};
   int hover_entity_id_{-1};
   int selected_entity_id_{-1};
+
+  bool output_render_result_{false};
 };
 }  // namespace sparks

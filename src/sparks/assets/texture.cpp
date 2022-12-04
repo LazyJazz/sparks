@@ -123,6 +123,8 @@ const glm::vec4 &Texture::operator()(int x, int y) const {
 }
 
 glm::vec4 Texture::Sample(glm::vec2 tex_coord) const {
+  tex_coord = tex_coord - glm::floor(tex_coord);
+  tex_coord *= glm::vec2{width_, height_};
   if (sample_type_ == SAMPLE_TYPE_LINEAR) {
     int x = std::lround(tex_coord.x - 0.5f);
     int y = std::lround(tex_coord.y - 0.5f);
