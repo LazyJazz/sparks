@@ -10,12 +10,32 @@ glm::mat4 Camera::GetProjectionMatrix(float aspect) const {
          glm::perspectiveZO(glm::radians(fov_), aspect, 0.1f, 1000.0f);
 }
 
-void Camera::ImGuiItems() {
-  ImGui::SliderFloat("FOV", &fov_, 10.0f, 160.0f, "%.0f", 0);
+bool Camera::ImGuiItems() {
+  bool value_changed = false;
+  value_changed |= ImGui::SliderFloat("FOV", &fov_, 1.0f, 160.0f, "%.0f", 0);
+  return value_changed;
 }
 
 void Camera::UpdateFov(float delta) {
   fov_ += delta;
-  fov_ = glm::clamp(fov_, 10.0f, 160.0f);
+  fov_ = glm::clamp(fov_, 1.0f, 160.0f);
+}
+
+void Camera::GenerateRay(float aspect,
+                         glm::vec2 range_low,
+                         glm::vec2 range_high,
+                         glm::vec3 &origin,
+                         glm::vec3 &direction,
+                         float rand_u,
+                         float rand_v,
+                         float rand_w,
+                         float rand_r) const {
+  auto pos = (range_high - range_low) * glm::vec2{rand_u, rand_v} + range_low;
+  pos = pos * 2.0f - 1.0f;
+  pos.y *= -1.0f;
+  origin = glm::vec3{0.0f};
+  auto tan_fov = std::tan(glm::radians(fov_ * 0.5f));
+  direction = glm::normalize(
+      glm::vec3{tan_fov * aspect * pos.x, tan_fov * pos.y, -1.0f});
 }
 }  // namespace sparks

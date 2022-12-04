@@ -27,6 +27,8 @@ class Renderer {
   void ResetAccumulation();
 
   void RayGeneration(int x, int y, glm::vec3 &color_result) const;
+  [[nodiscard]] glm::vec3 SampleRay(glm::vec3 origin,
+                                    glm::vec3 direction) const;
 
   void RetrieveAccumulationResult(glm::vec4 *accumulation_color_buffer_dst,
                                   float *accumulation_number_buffer_dst);

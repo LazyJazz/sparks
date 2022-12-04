@@ -30,6 +30,7 @@ class Scene {
 
   void SetCamera(const Camera &camera);
   Camera &GetCamera();
+  [[nodiscard]] const Camera &GetCamera() const;
   [[nodiscard]] glm::mat4 GetCameraToWorld() const;
   void SetCameraToWorld(const glm::mat4 &camera_to_world);
 

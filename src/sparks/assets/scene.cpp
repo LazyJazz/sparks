@@ -7,7 +7,7 @@ namespace sparks {
 
 Scene::Scene() {
   textures_.push_back(Texture(1, 1, glm::vec4{1.0f}, SAMPLE_TYPE_LINEAR));
-  Texture envmap(SAMPLE_TYPE_LINEAR);
+  Texture envmap;
   Texture::Load(u8"../../textures/envmap_clouds_4k.hdr", envmap);
   envmap.SetSampleType(SAMPLE_TYPE_LINEAR);
   envmap_id_ = AddTexture(envmap);
@@ -68,6 +68,10 @@ int Scene::GetEntityCount() const {
 }
 
 Camera &Scene::GetCamera() {
+  return camera_;
+}
+
+const Camera &Scene::GetCamera() const {
   return camera_;
 }
 

@@ -169,7 +169,13 @@ void App::OnUpdate(uint32_t ms) {
   UpdateDeviceAssets();
   HandleImGuiIO();
   UpdateCamera();
-  UploadAccumulationResult();
+  if (output_render_result_) {
+    UploadAccumulationResult();
+  }
+  if (reset_accumulation_) {
+    renderer_->ResetAccumulation();
+    reset_accumulation_ = false;
+  }
 }
 
 void App::OnRender() {
@@ -266,14 +272,15 @@ void App::UpdateImGui() {
     ImGui::NewLine();
     ImGui::Text("Camera");
     ImGui::Separator();
-    scene.GetCamera().ImGuiItems();
-    ImGui::InputFloat3("Position",
-                       reinterpret_cast<float *>(&scene.GetCameraPosition()));
-    ImGui::SliderAngle("Pitch", &scene.GetCameraPitchYawRoll().x, -90.0f,
-                       90.0f);
-    ImGui::SliderAngle("Yaw", &scene.GetCameraPitchYawRoll().y, 0.0f, 360.0f);
-    ImGui::SliderAngle("Roll", &scene.GetCameraPitchYawRoll().z, -180.0f,
-                       180.0f);
+    reset_accumulation_ |= scene.GetCamera().ImGuiItems();
+    reset_accumulation_ |= ImGui::InputFloat3(
+        "Position", reinterpret_cast<float *>(&scene.GetCameraPosition()));
+    reset_accumulation_ |= ImGui::SliderAngle(
+        "Pitch", &scene.GetCameraPitchYawRoll().x, -90.0f, 90.0f);
+    reset_accumulation_ |= ImGui::SliderAngle(
+        "Yaw", &scene.GetCameraPitchYawRoll().y, 0.0f, 360.0f);
+    reset_accumulation_ |= ImGui::SliderAngle(
+        "Roll", &scene.GetCameraPitchYawRoll().z, -180.0f, 180.0f);
 
     ImGui::NewLine();
     ImGui::Text("Environment Map");
@@ -286,7 +293,7 @@ void App::UpdateImGui() {
       ImGui::Text("Material");
       ImGui::Separator();
       Material &material = scene.GetEntity(selected_entity_id_).GetMaterial();
-      ImGui::ColorEdit3(
+      reset_accumulation_ |= ImGui::ColorEdit3(
           "Albedo Color", &material.albedo_color[0],
           ImGuiColorEditFlags_PickerHueWheel | ImGuiColorEditFlags_Float);
     }
@@ -318,12 +325,15 @@ void App::UpdateImGui() {
     ImGui::End();
 
     if (selected_entity_id_ != -1) {
-      UpdateImGuizmo();
+      reset_accumulation_ |= UpdateImGuizmo();
     }
   }
 
   if (!io.WantCaptureMouse) {
     scene.GetCamera().UpdateFov(-io.MouseWheel);
+    if (io.MouseWheel) {
+      reset_accumulation_ = true;
+    }
   }
 
   ImGui::Render();
@@ -519,7 +529,8 @@ void App::RebuildRenderNode() {
   host_result_render_node_->BuildRenderNode(core_->GetFramebufferWidth(),
                                             core_->GetFramebufferHeight());
 }
-void App::UpdateImGuizmo() {
+bool App::UpdateImGuizmo() {
+  bool value_changed = false;
   ImGui::SetNextWindowPos(ImVec2(ImGui::GetIO().DisplaySize.x, 0.0f),
                           ImGuiCond_Always, ImVec2(1.0f, 0.0f));
   ImGui::SetNextWindowBgAlpha(0.3);
@@ -529,43 +540,52 @@ void App::UpdateImGuizmo() {
 
   static ImGuizmo::OPERATION current_guizmo_operation(ImGuizmo::ROTATE);
   static ImGuizmo::MODE current_guizmo_mode(ImGuizmo::WORLD);
-  if (ImGui::IsKeyPressed(ImGuiKey_T))
+  if (ImGui::IsKeyPressed(ImGuiKey_T)) {
     current_guizmo_operation = ImGuizmo::TRANSLATE;
-  if (ImGui::IsKeyPressed(ImGuiKey_R))
+  }
+  if (ImGui::IsKeyPressed(ImGuiKey_R)) {
     current_guizmo_operation = ImGuizmo::ROTATE;
-  if (ImGui::IsKeyPressed(ImGuiKey_S))  // r Key
+  }
+  if (ImGui::IsKeyPressed(ImGuiKey_S)) {
     current_guizmo_operation = ImGuizmo::SCALE;
+  }
   float matrixTranslation[3], matrixRotation[3], matrixScale[3];
   auto &scene = renderer_->GetScene();
   auto &matrix = scene.GetEntity(selected_entity_id_).GetTransformMatrix();
   auto &io = ImGui::GetIO();
 
   if (ImGui::RadioButton("Translate",
-                         current_guizmo_operation == ImGuizmo::TRANSLATE))
+                         current_guizmo_operation == ImGuizmo::TRANSLATE)) {
     current_guizmo_operation = ImGuizmo::TRANSLATE;
+  }
   ImGui::SameLine();
   if (ImGui::RadioButton("Rotate",
-                         current_guizmo_operation == ImGuizmo::ROTATE))
+                         current_guizmo_operation == ImGuizmo::ROTATE)) {
     current_guizmo_operation = ImGuizmo::ROTATE;
+  }
   ImGui::SameLine();
-  if (ImGui::RadioButton("Scale", current_guizmo_operation == ImGuizmo::SCALE))
+  if (ImGui::RadioButton("Scale",
+                         current_guizmo_operation == ImGuizmo::SCALE)) {
     current_guizmo_operation = ImGuizmo::SCALE;
+  }
   ImGuizmo::DecomposeMatrixToComponents(reinterpret_cast<float *>(&matrix),
                                         matrixTranslation, matrixRotation,
                                         matrixScale);
-  ImGui::InputFloat3("Translation", matrixTranslation);
-  ImGui::InputFloat3("Rotation", matrixRotation);
-  ImGui::InputFloat3("Scale", matrixScale);
+  value_changed |= ImGui::InputFloat3("Translation", matrixTranslation);
+  value_changed |= ImGui::InputFloat3("Rotation", matrixRotation);
+  value_changed |= ImGui::InputFloat3("Scale", matrixScale);
   ImGuizmo::RecomposeMatrixFromComponents(matrixTranslation, matrixRotation,
                                           matrixScale,
                                           reinterpret_cast<float *>(&matrix));
 
   if (current_guizmo_operation != ImGuizmo::SCALE) {
-    if (ImGui::RadioButton("Local", current_guizmo_mode == ImGuizmo::LOCAL))
+    if (ImGui::RadioButton("Local", current_guizmo_mode == ImGuizmo::LOCAL)) {
       current_guizmo_mode = ImGuizmo::LOCAL;
+    }
     ImGui::SameLine();
-    if (ImGui::RadioButton("World", current_guizmo_mode == ImGuizmo::WORLD))
+    if (ImGui::RadioButton("World", current_guizmo_mode == ImGuizmo::WORLD)) {
       current_guizmo_mode = ImGuizmo::WORLD;
+    }
   }
 
   glm::mat4 imguizmo_view_ = glm::inverse(scene.GetCameraToWorld());
@@ -574,11 +594,13 @@ void App::UpdateImGuizmo() {
       scene.GetCamera().GetProjectionMatrix(float(io.DisplaySize.x) /
                                             float(io.DisplaySize.y));
   ImGuizmo::SetRect(0, 0, io.DisplaySize.x, io.DisplaySize.y);
-  ImGuizmo::Manipulate(reinterpret_cast<float *>(&imguizmo_view_),
-                       reinterpret_cast<float *>(&imguizmo_proj_),
-                       current_guizmo_operation, current_guizmo_mode,
-                       reinterpret_cast<float *>(&matrix), nullptr, nullptr);
+  value_changed |= ImGuizmo::Manipulate(
+      reinterpret_cast<float *>(&imguizmo_view_),
+      reinterpret_cast<float *>(&imguizmo_proj_), current_guizmo_operation,
+      current_guizmo_mode, reinterpret_cast<float *>(&matrix), nullptr,
+      nullptr);
   ImGui::End();
+  return value_changed;
 }
 
 void App::UpdateCamera() {
@@ -610,21 +632,27 @@ void App::UpdateCamera() {
   if (!io.WantCaptureMouse && !io.WantCaptureKeyboard) {
     if (ImGui::IsKeyDown(ImGuiKey_W)) {
       position += duration * 0.001f * (-z) * speed;
+      reset_accumulation_ = true;
     }
     if (ImGui::IsKeyDown(ImGuiKey_S)) {
       position += duration * 0.001f * (z)*speed;
+      reset_accumulation_ = true;
     }
     if (ImGui::IsKeyDown(ImGuiKey_A)) {
       position += duration * 0.001f * (-x) * speed;
+      reset_accumulation_ = true;
     }
     if (ImGui::IsKeyDown(ImGuiKey_D)) {
       position += duration * 0.001f * (x)*speed;
+      reset_accumulation_ = true;
     }
     if (ImGui::IsKeyDown(ImGuiKey_LeftCtrl)) {
       position += duration * 0.001f * (-y) * speed;
+      reset_accumulation_ = true;
     }
     if (ImGui::IsKeyDown(ImGuiKey_Space)) {
       position += duration * 0.001f * (y)*speed;
+      reset_accumulation_ = true;
     }
   }
 
@@ -633,6 +661,7 @@ void App::UpdateCamera() {
     if (ImGui::IsKeyDown(ImGuiKey_MouseLeft)) {
       pitch_yaw_roll.x -= diff.y * rotation_scale;
       pitch_yaw_roll.y -= diff.x * rotation_scale;
+      reset_accumulation_ = true;
     }
   }
   pitch_yaw_roll.x = glm::clamp(pitch_yaw_roll.x, -glm::pi<float>() * 0.5f,

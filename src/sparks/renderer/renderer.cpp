@@ -175,7 +175,22 @@ void Renderer::ResetAccumulation() {
 void Renderer::RayGeneration(int x, int y, glm::vec3 &color_result) const {
   glm::vec2 pos{(float(x) + 0.5f) / float(width_),
                 (float(y) + 0.5f) / float(height_)};
-  color_result = glm::vec3{pos, 0.0f};
+  glm::vec2 range_low{float(x) / float(width_), float(y) / float(height_)};
+  glm::vec2 range_high{(float(x) + 1.0f) / float(width_),
+                       (float(y) + 1.0f) / float(height_)};
+  glm::vec3 origin, direction;
+
+  static int sample = 0;
+  std::mt19937 rd(x ^ y + sample);
+
+  scene_.GetCamera().GenerateRay(
+      float(width_) / float(height_), range_low, range_high, origin, direction,
+      std::uniform_real_distribution<float>(0.0f, 1.0f)(rd),
+      std::uniform_real_distribution<float>(0.0f, 1.0f)(rd));
+  auto camera_to_world = scene_.GetCameraToWorld();
+  origin = camera_to_world * glm::vec4(origin, 1.0f);
+  direction = camera_to_world * glm::vec4(direction, 0.0f);
+  color_result = SampleRay(origin, direction);
 }
 
 void Renderer::RetrieveAccumulationResult(
@@ -186,6 +201,16 @@ void Renderer::RetrieveAccumulationResult(
               sizeof(glm::vec4) * accumulation_color_.size());
   std::memcpy(accumulation_number_buffer_dst, accumulation_number_.data(),
               sizeof(float) * accumulation_number_.size());
+}
+
+glm::vec3 Renderer::SampleRay(glm::vec3 origin, glm::vec3 direction) const {
+  float x = scene_.GetEnvmapOffset();
+  float y = acos(direction.y) * INV_PI;
+  if (glm::length(glm::vec2{direction.x, direction.y}) > 1e-4) {
+    x += glm::atan(direction.x, -direction.z);
+  }
+  x *= INV_PI * 0.5;
+  return scene_.GetTextures()[scene_.GetEnvmapId()].Sample(glm::vec2{x, y});
 }
 
 }  // namespace sparks

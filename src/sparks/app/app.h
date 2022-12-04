@@ -25,7 +25,7 @@ class App {
   void UpdateHostStencilBuffer();
   void UpdateDeviceAssets();
   void HandleImGuiIO();
-  void UpdateImGuizmo();
+  bool UpdateImGuizmo();
   void UpdateCamera();
   void UpdateEnvmapConfiguration();
   void UploadAccumulationResult();
@@ -85,5 +85,6 @@ class App {
   int selected_entity_id_{-1};
 
   bool output_render_result_{false};
+  bool reset_accumulation_{true};
 };
 }  // namespace sparks
