@@ -241,4 +241,14 @@ float Scene::TraceRay(const glm::vec3 &origin,
   return result;
 }
 
+glm::vec4 Scene::SampleEnvmap(const glm::vec3 &direction) const {
+  float x = envmap_offset_;
+  float y = acos(direction.y) * INV_PI;
+  if (glm::length(glm::vec2{direction.x, direction.y}) > 1e-4) {
+    x += glm::atan(direction.x, -direction.z);
+  }
+  x *= INV_PI * 0.5;
+  return textures_[envmap_id_].Sample(glm::vec2{x, y});
+}
+
 }  // namespace sparks

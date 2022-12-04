@@ -277,6 +277,10 @@ void App::UpdateImGui() {
     if (ImGui::RadioButton("Renderer", output_render_result_)) {
       output_render_result_ = true;
     }
+    reset_accumulation_ |= ImGui::SliderInt(
+        "Samples", &renderer_->GetRendererSettings().samples, 1, 16);
+    reset_accumulation_ |= ImGui::SliderInt(
+        "Bounces", &renderer_->GetRendererSettings().num_bounces, 1, 128);
 
     ImGui::NewLine();
     ImGui::Text("Camera");

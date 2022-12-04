@@ -68,6 +68,7 @@ void Renderer::WorkerThread() {
   std::unique_lock<std::mutex> lock(task_queue_mutex_);
   lock.unlock();
   std::vector<glm::vec3> sample_result;
+  PathTracer path_tracer(&renderer_settings_, &scene_);
   while (true) {
     lock.lock();
     while (true) {
@@ -78,6 +79,8 @@ void Renderer::WorkerThread() {
         } else {
           my_task = task_queue_.front();
           task_queue_.pop();
+          auto push_task = my_task;
+          push_task.sample += renderer_settings_.samples;
           task_queue_.push(my_task);
           break;
         }
@@ -106,7 +109,13 @@ void Renderer::WorkerThread() {
         uint32_t id = i * my_task.width + j;
         uint32_t x = j + my_task.x;
         uint32_t y = i + my_task.y;
-        RayGeneration(int(x), int(y), sample_result[id]);
+        sample_result[id] = glm::vec3{0.0f};
+        for (int k = 0; k < renderer_settings_.samples; k++) {
+          glm::vec3 result;
+          RayGeneration(int(x), int(y), int(my_task.sample) + k, result,
+                        path_tracer);
+          sample_result[id] += result;
+        }
       }
     }
 
@@ -117,7 +126,8 @@ void Renderer::WorkerThread() {
         uint32_t accumulation_id = (my_task.y + i) * width_ + (my_task.x + j);
         accumulation_color_[accumulation_id] +=
             glm::vec4{sample_result[id], 1.0f};
-        accumulation_number_[accumulation_id] += 1.0f;
+        accumulation_number_[accumulation_id] +=
+            float(renderer_settings_.samples);
       }
     }
     lock.unlock();
@@ -151,6 +161,7 @@ void Renderer::Resize(uint32_t width, uint32_t height) {
       task_info.y = j * task_height;
       task_info.width = std::min(task_width, width_ - task_info.x);
       task_info.height = std::min(task_height, height_ - task_info.y);
+      task_info.sample = 0;
       task_list.push_back(task_info);
     }
   }
@@ -169,10 +180,20 @@ void Renderer::ResetAccumulation() {
               sizeof(float) * accumulation_number_.size());
   std::memset(accumulation_color_.data(), 0,
               sizeof(glm::vec4) * accumulation_color_.size());
+  while (task_queue_.front().sample) {
+    auto task = task_queue_.front();
+    task_queue_.pop();
+    task.sample = 0;
+    task_queue_.push(task);
+  }
   ResumeWorkers();
 }
 
-void Renderer::RayGeneration(int x, int y, glm::vec3 &color_result) const {
+void Renderer::RayGeneration(int x,
+                             int y,
+                             int sample,
+                             glm::vec3 &color_result,
+                             PathTracer &path_tracer) const {
   glm::vec2 pos{(float(x) + 0.5f) / float(width_),
                 (float(y) + 0.5f) / float(height_)};
   glm::vec2 range_low{float(x) / float(width_), float(y) / float(height_)};
@@ -185,7 +206,7 @@ void Renderer::RayGeneration(int x, int y, glm::vec3 &color_result) const {
   auto camera_to_world = scene_.GetCameraToWorld();
   origin = camera_to_world * glm::vec4(origin, 1.0f);
   direction = camera_to_world * glm::vec4(direction, 0.0f);
-  color_result = SampleRay(origin, direction);
+  color_result = path_tracer.SampleRay(origin, direction, x, y, sample);
 }
 
 void Renderer::RetrieveAccumulationResult(
@@ -196,25 +217,6 @@ void Renderer::RetrieveAccumulationResult(
               sizeof(glm::vec4) * accumulation_color_.size());
   std::memcpy(accumulation_number_buffer_dst, accumulation_number_.data(),
               sizeof(float) * accumulation_number_.size());
-}
-
-glm::vec3 Renderer::SampleRay(glm::vec3 origin, glm::vec3 direction) const {
-  HitRecord hit_record;
-  auto t = scene_.TraceRay(origin, direction, 1e-3f, 1e3f, &hit_record);
-  if (t > 0.0f) {
-    auto &material = scene_.GetEntity(hit_record.hit_entity_id).GetMaterial();
-    return material.albedo_color *
-           glm::vec3{scene_.GetTextures()[material.albedo_texture_id].Sample(
-               hit_record.tex_coord)};
-  } else {
-    float x = scene_.GetEnvmapOffset();
-    float y = acos(direction.y) * INV_PI;
-    if (glm::length(glm::vec2{direction.x, direction.y}) > 1e-4) {
-      x += glm::atan(direction.x, -direction.z);
-    }
-    x *= INV_PI * 0.5;
-    return scene_.GetTextures()[scene_.GetEnvmapId()].Sample(glm::vec2{x, y});
-  }
 }
 
 }  // namespace sparks

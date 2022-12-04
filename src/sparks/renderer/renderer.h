@@ -3,6 +3,7 @@
 #include "mutex"
 #include "queue"
 #include "sparks/assets/assets.h"
+#include "sparks/renderer/path_tracer.h"
 #include "sparks/renderer/renderer_settings.h"
 #include "sparks/renderer/util.h"
 #include "sparks/util/util.h"
@@ -26,9 +27,11 @@ class Renderer {
   void Resize(uint32_t width, uint32_t height);
   void ResetAccumulation();
 
-  void RayGeneration(int x, int y, glm::vec3 &color_result) const;
-  [[nodiscard]] glm::vec3 SampleRay(glm::vec3 origin,
-                                    glm::vec3 direction) const;
+  void RayGeneration(int x,
+                     int y,
+                     int sample,
+                     glm::vec3 &color_result,
+                     PathTracer &path_tracer) const;
 
   void RetrieveAccumulationResult(glm::vec4 *accumulation_color_buffer_dst,
                                   float *accumulation_number_buffer_dst);
