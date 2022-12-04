@@ -2,6 +2,7 @@
 
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
+#include "sparks/assets/accelerated_mesh.h"
 
 namespace sparks {
 
@@ -11,19 +12,23 @@ Scene::Scene() {
   Texture::Load(u8"../../textures/envmap_clouds_4k.hdr", envmap);
   envmap.SetSampleType(SAMPLE_TYPE_LINEAR);
   envmap_id_ = AddTexture(envmap);
-  AddEntity(Mesh({{{-1.0f, 0.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
-                  {{-1.0f, 0.0f, -1.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f}},
-                  {{1.0f, 0.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
-                  {{1.0f, 0.0f, -1.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}}},
-                 {0, 1, 2, 1, 2, 3}),
-            Material{}, glm::mat4{1.0f});
+  AddEntity(
+      AcceleratedMesh({{{-1.0f, 0.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
+                       {{-1.0f, 0.0f, -1.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f}},
+                       {{1.0f, 0.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
+                       {{1.0f, 0.0f, -1.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}}},
+                      {0, 1, 2, 1, 2, 3}),
+      Material{}, glm::mat4{1.0f});
   SetCameraToWorld(glm::inverse(glm::lookAt(glm::vec3{2.0f, 1.0f, 3.0f},
                                             glm::vec3{0.0f, 0.0f, 0.0f},
                                             glm::vec3{0.0f, 1.0f, 0.0f})));
 
   Texture texture;
   Texture::Load("../../textures/earth.jpg", texture);
-  AddEntity(Mesh::Sphere(glm::vec3{0.0f, 0.0f, 0.0f}, 0.5f),
+  //  AddEntity(Mesh::Sphere(glm::vec3{0.0f, 0.0f, 0.0f}, 0.5f),
+  //            Material{glm::vec3{1.0f}, AddTexture(texture)},
+  //            glm::translate(glm::mat4{1.0f}, glm::vec3{0.0f, 0.5f, 0.0f}));
+  AddEntity(AcceleratedMesh(Mesh::Sphere(glm::vec3{0.0f, 0.0f, 0.0f}, 0.5f)),
             Material{glm::vec3{1.0f}, AddTexture(texture)},
             glm::translate(glm::mat4{1.0f}, glm::vec3{0.0f, 0.5f, 0.0f}));
 }

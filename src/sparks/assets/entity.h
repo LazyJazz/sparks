@@ -13,6 +13,14 @@ class Entity {
   Entity(const Mesh &mesh,
          const Material &material,
          const glm::mat4 &transform = glm::mat4{1.0f});
+  template <class ModelType>
+  Entity(const ModelType &model,
+         const Material &material,
+         const glm::mat4 &transform = glm::mat4{1.0f}) {
+    model_ = std::make_unique<ModelType>(model);
+    material_ = material;
+    transform_ = transform;
+  }
   [[nodiscard]] const Model *GetModel() const;
   [[nodiscard]] glm::mat4 &GetTransformMatrix();
   [[nodiscard]] const glm::mat4 &GetTransformMatrix() const;

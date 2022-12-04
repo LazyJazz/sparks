@@ -23,7 +23,7 @@ class Mesh : public Model {
                      float radius = 1.0f);
   void WriteObjFile(const std::string &file_path) const;
 
- private:
+ protected:
   std::vector<Vertex> vertices_;
   std::vector<uint32_t> indices_;
 };

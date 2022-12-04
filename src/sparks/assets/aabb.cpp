@@ -1,6 +1,7 @@
 #include "sparks/assets/aabb.h"
 
 #include "algorithm"
+#include "grassland/grassland.h"
 
 namespace sparks {
 
@@ -39,21 +40,23 @@ bool AxisAlignedBoundingBox::IsIntersect(const glm::vec3 &origin,
   float intersection_range_high = 0.0f;
   float t;
   glm::vec3 intersection;
-#define TestIntersection(x, y, z)                                   \
-  if (std::abs(direction.x) > 1e-5) {                               \
-    float inv_d = 1.0f / direction.x;                               \
-    t = (x##_low - origin.x) * inv_d;                               \
-    intersection = origin + direction * t;                          \
-    if (y##_low <= intersection.y && intersection.y <= y##_high &&  \
-        z##_low <= intersection.z && intersection.z <= z##_high) {  \
-      intersection_range_low = std::min(intersection_range_low, t); \
-    }                                                               \
-    t = (x##_high - origin.x) * inv_d;                              \
-    intersection = origin + direction * t;                          \
-    if (y##_low <= intersection.y && intersection.y <= y##_high &&  \
-        z##_low <= intersection.z && intersection.z <= z##_high) {  \
-      intersection_range_low = std::min(intersection_range_low, t); \
-    }                                                               \
+#define TestIntersection(x, y, z)                                     \
+  if (std::abs(direction.x) > 1e-5) {                                 \
+    float inv_d = 1.0f / direction.x;                                 \
+    t = (x##_low - origin.x) * inv_d;                                 \
+    intersection = origin + direction * t;                            \
+    if (y##_low <= intersection.y && intersection.y <= y##_high &&    \
+        z##_low <= intersection.z && intersection.z <= z##_high) {    \
+      intersection_range_low = std::min(intersection_range_low, t);   \
+      intersection_range_high = std::max(intersection_range_high, t); \
+    }                                                                 \
+    t = (x##_high - origin.x) * inv_d;                                \
+    intersection = origin + direction * t;                            \
+    if (y##_low <= intersection.y && intersection.y <= y##_high &&    \
+        z##_low <= intersection.z && intersection.z <= z##_high) {    \
+      intersection_range_low = std::min(intersection_range_low, t);   \
+      intersection_range_high = std::max(intersection_range_high, t); \
+    }                                                                 \
   }
   TestIntersection(x, y, z);
   TestIntersection(z, x, y);
