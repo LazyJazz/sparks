@@ -180,13 +180,8 @@ void Renderer::RayGeneration(int x, int y, glm::vec3 &color_result) const {
                        (float(y) + 1.0f) / float(height_)};
   glm::vec3 origin, direction;
 
-  static int sample = 0;
-  std::mt19937 rd(x ^ y + sample);
-
-  scene_.GetCamera().GenerateRay(
-      float(width_) / float(height_), range_low, range_high, origin, direction,
-      std::uniform_real_distribution<float>(0.0f, 1.0f)(rd),
-      std::uniform_real_distribution<float>(0.0f, 1.0f)(rd));
+  scene_.GetCamera().GenerateRay(float(width_) / float(height_), range_low,
+                                 range_high, origin, direction);
   auto camera_to_world = scene_.GetCameraToWorld();
   origin = camera_to_world * glm::vec4(origin, 1.0f);
   direction = camera_to_world * glm::vec4(direction, 0.0f);
@@ -204,13 +199,22 @@ void Renderer::RetrieveAccumulationResult(
 }
 
 glm::vec3 Renderer::SampleRay(glm::vec3 origin, glm::vec3 direction) const {
-  float x = scene_.GetEnvmapOffset();
-  float y = acos(direction.y) * INV_PI;
-  if (glm::length(glm::vec2{direction.x, direction.y}) > 1e-4) {
-    x += glm::atan(direction.x, -direction.z);
+  HitRecord hit_record;
+  auto t = scene_.TraceRay(origin, direction, 1e-3f, 1e3f, &hit_record);
+  if (t > 0.0f) {
+    auto &material = scene_.GetEntity(hit_record.hit_entity_id).GetMaterial();
+    return material.albedo_color *
+           glm::vec3{scene_.GetTextures()[material.albedo_texture_id].Sample(
+               hit_record.tex_coord)};
+  } else {
+    float x = scene_.GetEnvmapOffset();
+    float y = acos(direction.y) * INV_PI;
+    if (glm::length(glm::vec2{direction.x, direction.y}) > 1e-4) {
+      x += glm::atan(direction.x, -direction.z);
+    }
+    x *= INV_PI * 0.5;
+    return scene_.GetTextures()[scene_.GetEnvmapId()].Sample(glm::vec2{x, y});
   }
-  x *= INV_PI * 0.5;
-  return scene_.GetTextures()[scene_.GetEnvmapId()].Sample(glm::vec2{x, y});
 }
 
 }  // namespace sparks

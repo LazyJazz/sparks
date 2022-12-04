@@ -13,7 +13,7 @@ class Mesh : public Model {
   [[nodiscard]] float TraceRay(const glm::vec3 &origin,
                                const glm::vec3 &direction,
                                float t_min,
-                               float) const override;
+                               HitRecord *hit_record) const override;
   [[nodiscard]] AxisAlignedBoundingBox GetAABB(
       const glm::mat4 &transform) const override;
   [[nodiscard]] std::vector<Vertex> GetVertices() const override;

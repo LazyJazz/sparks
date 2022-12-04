@@ -28,8 +28,10 @@ void App::Run() {
 }
 
 void App::OnInit() {
+  LAND_INFO("Starting worker threads.");
   renderer_->StartWorkerThreads();
 
+  LAND_INFO("Allocating visual pipeline textures.");
   screen_frame_ = std::make_unique<vulkan::framework::TextureImage>(
       core_.get(), core_->GetFramebufferWidth(), core_->GetFramebufferHeight(),
       VK_FORMAT_B8G8R8A8_UNORM,
@@ -117,9 +119,11 @@ void App::OnInit() {
     host_result_render_node_->BuildRenderNode(width, height);
   });
 
+  LAND_INFO("Initializing ImGui.");
   core_->ImGuiInit(screen_frame_.get(), "../../fonts/NotoSansSC-Regular.otf",
                    24.0f);
 
+  LAND_INFO("Allocating visual pipeline buffers.");
   global_uniform_buffer_ =
       std::make_unique<vulkan::framework::DynamicBuffer<GlobalUniformObject>>(
           core_.get(), 1);
@@ -147,7 +151,9 @@ void App::OnInit() {
   nearest_sampler_ = std::make_unique<vulkan::Sampler>(
       core_->GetDevice(), VK_FILTER_NEAREST, VK_SAMPLER_ADDRESS_MODE_REPEAT);
   ImGuizmo::Enable(true);
+  LAND_INFO("Updating device assets.");
   UpdateDeviceAssets();
+  LAND_INFO("Building render nodes.");
   RebuildRenderNode();
 }
 
@@ -162,7 +168,10 @@ void App::OnLoop() {
 }
 
 void App::OnUpdate(uint32_t ms) {
-  UpdateEnvmapConfiguration();
+  if (envmap_require_configure_) {
+    renderer_->GetScene().UpdateEnvmapConfiguration();
+    envmap_require_configure_ = false;
+  }
   UpdateImGui();
   UpdateDynamicBuffer();
   UpdateHostStencilBuffer();
@@ -349,9 +358,9 @@ void App::UpdateDynamicBuffer() {
   guo.envmap_offset = renderer_->GetScene().GetEnvmapOffset();
   guo.hover_id = hover_entity_id_;
   guo.selected_id = selected_entity_id_;
-  guo.envmap_light_direction = envmap_light_direction_;
-  guo.envmap_minor_color = envmap_minor_color_;
-  guo.envmap_major_color = envmap_major_color_;
+  guo.envmap_light_direction = renderer_->GetScene().GetEnvmapLightDirection();
+  guo.envmap_minor_color = renderer_->GetScene().GetEnvmapMinorColor();
+  guo.envmap_major_color = renderer_->GetScene().GetEnvmapMajorColor();
   global_uniform_buffer_->operator[](0) = guo;
   auto &entities = renderer_->GetScene().GetEntities();
   for (int i = 0; i < entities.size(); i++) {
@@ -661,76 +670,15 @@ void App::UpdateCamera() {
     if (ImGui::IsKeyDown(ImGuiKey_MouseLeft)) {
       pitch_yaw_roll.x -= diff.y * rotation_scale;
       pitch_yaw_roll.y -= diff.x * rotation_scale;
-      reset_accumulation_ = true;
+      if (diff != glm::vec2{0.0f}) {
+        reset_accumulation_ = true;
+      }
     }
   }
   pitch_yaw_roll.x = glm::clamp(pitch_yaw_roll.x, -glm::pi<float>() * 0.5f,
                                 glm::pi<float>() * 0.5f);
   pitch_yaw_roll.y = glm::mod(pitch_yaw_roll.y, glm::pi<float>() * 2.0f);
   pitch_yaw_roll.z = glm::mod(pitch_yaw_roll.z, glm::pi<float>() * 2.0f);
-}
-
-void App::UpdateEnvmapConfiguration() {
-  if (envmap_require_configure_) {
-    const auto &scene = renderer_->GetScene();
-    auto envmap_id = scene.GetEnvmapId();
-    auto &envmap_texture = scene.GetTextures()[envmap_id];
-    auto buffer = envmap_texture.GetBuffer();
-
-    envmap_minor_color_ = glm::vec3{0.0f};
-    envmap_major_color_ = glm::vec3{0.0f};
-    envmap_cdf_.resize(envmap_texture.GetWidth() * envmap_texture.GetHeight());
-
-    std::vector<float> sample_scale_(envmap_texture.GetHeight() + 1);
-    auto inv_width = 1.0f / float(envmap_texture.GetWidth());
-    auto inv_height = 1.0f / float(envmap_texture.GetHeight());
-    for (int i = 0; i <= envmap_texture.GetHeight(); i++) {
-      float x = float(i) * glm::pi<float>() * inv_height;
-      sample_scale_[i] = -std::cos(x);
-    }
-
-    auto width_height = envmap_texture.GetWidth() * envmap_texture.GetHeight();
-    float total_weight = 0.0f;
-    float major_strength = -1.0f;
-    for (int y = 0; y < envmap_texture.GetHeight(); y++) {
-      auto scale = sample_scale_[y + 1] - sample_scale_[y];
-
-      auto theta = (float(y) + 0.5f) * inv_height * glm::pi<float>();
-      auto sin_theta = std::sin(theta);
-      auto cos_theta = std::cos(theta);
-
-      for (int x = 0; x < envmap_texture.GetWidth(); x++) {
-        auto phi = (float(x) + 0.5f) * inv_width * glm::pi<float>() * 2.0f;
-        auto sin_phi = std::sin(phi);
-        auto cos_phi = std::cos(phi);
-
-        auto i = y * envmap_texture.GetWidth() + x;
-        auto color = glm::vec3{buffer[i]};
-        auto minor_color = glm::clamp(color, 0.0f, 1.0f);
-        auto major_color = color - minor_color;
-        envmap_major_color_ += major_color * (scale * inv_width);
-        envmap_minor_color_ += minor_color * (scale * inv_width);
-        color *= scale;
-
-        auto strength = std::max(color.x, std::max(color.y, color.z));
-        if (strength > major_strength) {
-          envmap_light_direction_ = {sin_theta * sin_phi, cos_theta,
-                                     -sin_theta * cos_phi};
-          major_strength = strength;
-        }
-
-        total_weight += strength * scale;
-        envmap_cdf_[i] = total_weight;
-      }
-    }
-
-    auto inv_total_weight = 1.0f / total_weight;
-    for (auto &v : envmap_cdf_) {
-      v *= inv_total_weight;
-    }
-
-    envmap_require_configure_ = false;
-  }
 }
 
 void App::UploadAccumulationResult() {

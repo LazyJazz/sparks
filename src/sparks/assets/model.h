@@ -2,7 +2,9 @@
 #include "glm/glm.hpp"
 #include "iostream"
 #include "sparks/assets/aabb.h"
+#include "sparks/assets/hit_record.h"
 #include "sparks/assets/vertex.h"
+#include "sparks/util/util.h"
 #include "vector"
 
 namespace sparks {
@@ -12,7 +14,7 @@ class Model {
   [[nodiscard]] virtual float TraceRay(const glm::vec3 &origin,
                                        const glm::vec3 &direction,
                                        float t_min,
-                                       float) const = 0;
+                                       HitRecord *hit_record) const = 0;
   [[nodiscard]] virtual AxisAlignedBoundingBox GetAABB(
       const glm::mat4 &transform) const = 0;
   [[nodiscard]] virtual std::vector<Vertex> GetVertices() const = 0;
