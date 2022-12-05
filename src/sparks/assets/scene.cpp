@@ -17,7 +17,7 @@ Scene::Scene() {
                        {{-1.0f, 0.0f, -1.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f}},
                        {{1.0f, 0.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
                        {{1.0f, 0.0f, -1.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}}},
-                      {0, 1, 2, 1, 2, 3}),
+                      {0, 1, 2, 2, 1, 3}),
       Material{}, glm::mat4{1.0f});
   SetCameraToWorld(glm::inverse(glm::lookAt(glm::vec3{2.0f, 1.0f, 3.0f},
                                             glm::vec3{0.0f, 0.0f, 0.0f},
@@ -26,8 +26,8 @@ Scene::Scene() {
   Texture texture;
   Texture::Load("../../textures/earth.jpg", texture);
   //  AddEntity(Mesh::Sphere(glm::vec3{0.0f, 0.0f, 0.0f}, 0.5f),
-  //            Material{glm::vec3{1.0f}, AddTexture(texture)},
-  //            glm::translate(glm::mat4{1.0f}, glm::vec3{0.0f, 0.5f, 0.0f}));
+  //              Material{glm::vec3{1.0f}, AddTexture(texture)},
+  //              glm::translate(glm::mat4{1.0f}, glm::vec3{0.0f, 0.5f, 0.0f}));
   AddEntity(AcceleratedMesh(Mesh::Sphere(glm::vec3{0.0f, 0.0f, 0.0f}, 0.5f)),
             Material{glm::vec3{1.0f}, AddTexture(texture)},
             glm::translate(glm::mat4{1.0f}, glm::vec3{0.0f, 0.5f, 0.0f}));
@@ -184,8 +184,14 @@ void Scene::UpdateEnvmapConfiguration() {
     v *= inv_total_weight;
   }
 }
-const glm::vec3 &Scene::GetEnvmapLightDirection() const {
-  return envmap_light_direction_;
+glm::vec3 Scene::GetEnvmapLightDirection() const {
+  float sin_offset = std::sin(envmap_offset_);
+  float cos_offset = std::cos(envmap_offset_);
+  return {cos_offset * envmap_light_direction_.x +
+              sin_offset * envmap_light_direction_.z,
+          envmap_light_direction_.y,
+          -sin_offset * envmap_light_direction_.x +
+              cos_offset * envmap_light_direction_.z};
 }
 const glm::vec3 &Scene::GetEnvmapMinorColor() const {
   return envmap_minor_color_;
@@ -225,18 +231,23 @@ float Scene::TraceRay(const glm::vec3 &origin,
       result = local_result;
       if (hit_record) {
         local_hit_record.position =
-            inv_transform * glm::vec4{local_hit_record.position, 1.0f};
-        local_hit_record.normal = glm::transpose(transform) *
+            transform * glm::vec4{local_hit_record.position, 1.0f};
+        local_hit_record.normal = glm::transpose(inv_transform) *
                                   glm::vec4{local_hit_record.normal, 0.0f};
         local_hit_record.tangent =
-            inv_transform * glm::vec4{local_hit_record.tangent, 0.0f};
+            transform * glm::vec4{local_hit_record.tangent, 0.0f};
         local_hit_record.geometry_normal =
-            glm::transpose(transform) *
+            glm::transpose(inv_transform) *
             glm::vec4{local_hit_record.geometry_normal, 0.0f};
         *hit_record = local_hit_record;
         hit_record->hit_entity_id = entity_id;
       }
     }
+  }
+  if (hit_record) {
+    hit_record->geometry_normal = glm::normalize(hit_record->geometry_normal);
+    hit_record->normal = glm::normalize(hit_record->normal);
+    hit_record->tangent = glm::normalize(hit_record->tangent);
   }
   return result;
 }

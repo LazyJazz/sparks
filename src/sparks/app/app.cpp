@@ -298,8 +298,8 @@ void App::UpdateImGui() {
     ImGui::NewLine();
     ImGui::Text("Environment Map");
     ImGui::Separator();
-    ImGui::SliderAngle("Offset", &scene.GetEnvmapOffset(), 0.0f, 360.0f,
-                       "%.0f deg");
+    reset_accumulation_ |= ImGui::SliderAngle(
+        "Offset", &scene.GetEnvmapOffset(), 0.0f, 360.0f, "%.0f deg");
 
     if (selected_entity_id_ != -1) {
       ImGui::NewLine();

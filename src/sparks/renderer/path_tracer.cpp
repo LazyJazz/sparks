@@ -24,12 +24,23 @@ glm::vec3 PathTracer::SampleRay(glm::vec3 origin,
     if (t > 0.0f) {
       auto &material =
           scene_->GetEntity(hit_record.hit_entity_id).GetMaterial();
-      return material.albedo_color *
-             glm::vec3{scene_->GetTextures()[material.albedo_texture_id].Sample(
-                 hit_record.tex_coord)};
+      throughput *=
+          material.albedo_color *
+          glm::vec3{scene_->GetTextures()[material.albedo_texture_id].Sample(
+              hit_record.tex_coord)};
+      origin = hit_record.position;
+      direction = scene_->GetEnvmapLightDirection();
+      emission += throughput * scene_->GetEnvmapMinorColor();
+      throughput *= std::max(glm::dot(direction, hit_record.normal), 0.0f);
+      if (scene_->TraceRay(origin, direction, 1e-3f, 1e3f, nullptr) < 0.0f) {
+        emission += throughput * scene_->GetEnvmapMajorColor();
+      }
+      break;
     } else {
-      return scene_->SampleEnvmap(direction);
+      emission += throughput * glm::vec3{scene_->SampleEnvmap(direction)};
+      break;
     }
   }
+  return emission;
 }
 }  // namespace sparks

@@ -112,7 +112,7 @@ void AcceleratedMesh::TraceRay(int x,
       *result = t;
       if (hit_record) {
         auto geometry_normal = glm::normalize(
-            glm::cross(v1.position - v0.position, v2.position - v0.position));
+            glm::cross(v2.position - v0.position, v1.position - v0.position));
         if (glm::dot(geometry_normal, direction) < 0.0f) {
           hit_record->position = position;
           hit_record->geometry_normal = geometry_normal;

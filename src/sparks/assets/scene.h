@@ -46,7 +46,7 @@ class Scene {
   void Clear();
   void UpdateEnvmapConfiguration();
 
-  [[nodiscard]] const glm::vec3 &GetEnvmapLightDirection() const;
+  [[nodiscard]] glm::vec3 GetEnvmapLightDirection() const;
   [[nodiscard]] const glm::vec3 &GetEnvmapMinorColor() const;
   [[nodiscard]] const glm::vec3 &GetEnvmapMajorColor() const;
   [[nodiscard]] const std::vector<float> &GetEnvmapCdf() const;
