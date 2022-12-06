@@ -34,7 +34,8 @@ class AcceleratedMesh : public Mesh {
                 const glm::vec3 &direction,
                 float t_min,
                 float *t,
-                HitRecord *hit_record) const;
+                HitRecord *hit_record,
+                int *trace_cnt) const;
   int root_{-1};
   std::vector<TreeNode> tree_node_;
 };

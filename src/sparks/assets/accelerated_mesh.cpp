@@ -16,9 +16,9 @@ AcceleratedMesh::AcceleratedMesh(const std::vector<Vertex> &vertices,
 void AcceleratedMesh::BuildAccelerationStructure() {
   std::vector<std::pair<int, glm::vec3>> triangle_indices;
   for (int i = 0; i * 3 + 2 < indices_.size(); i++) {
-    triangle_indices.emplace_back(i, (vertices_[indices_[i]].position +
-                                      vertices_[indices_[i + 1]].position +
-                                      vertices_[indices_[i + 2]].position) /
+    triangle_indices.emplace_back(i, (vertices_[indices_[i * 3]].position +
+                                      vertices_[indices_[i * 3 + 1]].position +
+                                      vertices_[indices_[i * 3 + 2]].position) /
                                          3.0f);
   }
   tree_node_.resize(triangle_indices.size());
@@ -45,6 +45,8 @@ void AcceleratedMesh::BuildTree(int &x,
       AxisAlignedBoundingBox(vertices_[indices_[x * 3]].position) |
       AxisAlignedBoundingBox(vertices_[indices_[x * 3 + 1]].position) |
       AxisAlignedBoundingBox(vertices_[indices_[x * 3 + 2]].position);
+  tree_node_[x].child[0] = -1;
+  tree_node_[x].child[1] = -1;
   BuildTree(tree_node_[x].child[0], triangle_list, L, mid, (cut + 1) % 3);
   BuildTree(tree_node_[x].child[1], triangle_list, mid + 1, R, (cut + 1) % 3);
   if (tree_node_[x].child[0] != -1) {
@@ -60,7 +62,8 @@ float AcceleratedMesh::TraceRay(const glm::vec3 &origin,
                                 float t_min,
                                 HitRecord *hit_record) const {
   float t = -1.0f;
-  TraceRay(root_, origin, direction, t_min, &t, hit_record);
+  int trace_cnt = 0;
+  TraceRay(root_, origin, direction, t_min, &t, hit_record, &trace_cnt);
   return t;
 }
 
@@ -69,7 +72,11 @@ void AcceleratedMesh::TraceRay(int x,
                                const glm::vec3 &direction,
                                float t_min,
                                float *result,
-                               HitRecord *hit_record) const {
+                               HitRecord *hit_record,
+                               int *trace_cnt) const {
+  if (trace_cnt) {
+    (*trace_cnt)++;
+  }
   if (x == -1) {
     return;
   }
@@ -127,10 +134,10 @@ void AcceleratedMesh::TraceRay(int x,
       }
     }
   } while (false);
-  TraceRay(tree_node_[x].child[0], origin, direction, t_min, result,
-           hit_record);
-  TraceRay(tree_node_[x].child[1], origin, direction, t_min, result,
-           hit_record);
+  TraceRay(tree_node_[x].child[0], origin, direction, t_min, result, hit_record,
+           trace_cnt);
+  TraceRay(tree_node_[x].child[1], origin, direction, t_min, result, hit_record,
+           trace_cnt);
 }
 
 }  // namespace sparks
