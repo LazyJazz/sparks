@@ -3,6 +3,10 @@
 #include "fstream"
 #include "iomanip"
 #include "iostream"
+#include "unordered_map"
+
+#define TINYOBJLOADER_IMPLEMENTATION
+#include "tiny_obj_loader.h"
 
 namespace sparks {
 
@@ -156,6 +160,131 @@ std::vector<Vertex> Mesh::GetVertices() const {
 }
 std::vector<uint32_t> Mesh::GetIndices() const {
   return indices_;
+}
+
+bool Mesh::LoadObjFile(const std::string &obj_file_path, Mesh &mesh) {
+  tinyobj::ObjReaderConfig reader_config;
+  reader_config.mtl_search_path = "./";  // Path to material files
+
+  tinyobj::ObjReader reader;
+
+  if (!reader.ParseFromFile(obj_file_path, reader_config)) {
+    if (!reader.Error().empty()) {
+      LAND_WARN("[Load obj, ERROR]: {}", reader.Error());
+    }
+    return false;
+  }
+
+  if (!reader.Warning().empty()) {
+    LAND_WARN("{}", reader.Warning());
+  }
+
+  auto &attrib = reader.GetAttrib();
+  auto &shapes = reader.GetShapes();
+  auto &materials = reader.GetMaterials();
+
+  std::vector<Vertex> vertices;
+  std::vector<uint32_t> indices;
+
+  // Loop over shapes
+  for (size_t s = 0; s < shapes.size(); s++) {
+    // Loop over faces(polygon)
+    size_t index_offset = 0;
+    for (size_t f = 0; f < shapes[s].mesh.num_face_vertices.size(); f++) {
+      size_t fv = size_t(shapes[s].mesh.num_face_vertices[f]);
+
+      // Loop over vertices in the face.
+      std::vector<Vertex> face_vertices;
+      for (size_t v = 0; v < fv; v++) {
+        Vertex vertex{};
+        // access to vertex
+        tinyobj::index_t idx = shapes[s].mesh.indices[index_offset + v];
+        tinyobj::real_t vx = attrib.vertices[3 * size_t(idx.vertex_index) + 0];
+        tinyobj::real_t vy = attrib.vertices[3 * size_t(idx.vertex_index) + 1];
+        tinyobj::real_t vz = attrib.vertices[3 * size_t(idx.vertex_index) + 2];
+        vertex.position = {vx, vy, vz};
+        // Check if `normal_index` is zero or positive. negative = no normal
+        // data
+        if (idx.normal_index >= 0) {
+          tinyobj::real_t nx = attrib.normals[3 * size_t(idx.normal_index) + 0];
+          tinyobj::real_t ny = attrib.normals[3 * size_t(idx.normal_index) + 1];
+          tinyobj::real_t nz = attrib.normals[3 * size_t(idx.normal_index) + 2];
+          vertex.normal = {nx, ny, nz};
+        } else {
+          vertex.normal = {0.0f, 0.0f, 0.0f};
+        }
+
+        // Check if `texcoord_index` is zero or positive. negative = no texcoord
+        // data
+        if (idx.texcoord_index >= 0) {
+          tinyobj::real_t tx =
+              attrib.texcoords[2 * size_t(idx.texcoord_index) + 0];
+          tinyobj::real_t ty =
+              attrib.texcoords[2 * size_t(idx.texcoord_index) + 1];
+          vertex.tex_coord = {tx, ty};
+        }
+        face_vertices.push_back(vertex);
+      }
+
+      for (int i = 1; i < face_vertices.size() - 1; i++) {
+        Vertex v0 = face_vertices[0];
+        Vertex v1 = face_vertices[i];
+        Vertex v2 = face_vertices[i + 1];
+        auto geometry_normal = glm::normalize(
+            glm::cross(v2.position - v0.position, v1.position - v0.position));
+        if (v0.normal == glm::vec3{0.0f, 0.0f, 0.0f}) {
+          v0.normal = geometry_normal;
+        } else if (glm::dot(geometry_normal, v0.normal) < 0.0f) {
+          v0.normal = -v0.normal;
+        }
+        if (v1.normal == glm::vec3{0.0f, 0.0f, 0.0f}) {
+          v1.normal = geometry_normal;
+        } else if (glm::dot(geometry_normal, v1.normal) < 0.0f) {
+          v1.normal = -v1.normal;
+        }
+        if (v2.normal == glm::vec3{0.0f, 0.0f, 0.0f}) {
+          v2.normal = geometry_normal;
+        } else if (glm::dot(geometry_normal, v2.normal) < 0.0f) {
+          v2.normal = -v2.normal;
+        }
+        indices.push_back(vertices.size());
+        indices.push_back(vertices.size() + 1);
+        indices.push_back(vertices.size() + 2);
+        vertices.push_back(v0);
+        vertices.push_back(v1);
+        vertices.push_back(v2);
+      }
+
+      index_offset += fv;
+    }
+  }
+  mesh = Mesh(vertices, indices);
+  mesh.MergeVertices();
+  return true;
+}
+
+void Mesh::MergeVertices() {
+  std::vector<Vertex> vertices;
+  std::vector<uint32_t> indices;
+  std::unordered_map<Vertex, uint32_t, VertexHash> vertex_index_map;
+  auto index_func = [&vertices, &vertex_index_map](const Vertex &v) {
+    if (vertex_index_map.count(v)) {
+      return vertex_index_map.at(v);
+    }
+    uint32_t res = vertices.size();
+    vertex_index_map[v] = res;
+    vertices.push_back(v);
+    return res;
+  };
+  for (auto ind : indices_) {
+    indices.push_back(index_func(vertices_[ind]));
+  }
+  vertices_ = vertices;
+  indices_ = indices;
+}
+
+const char *Mesh::GetDefaultEntityName() {
+  return "Mesh";
 }
 
 }  // namespace sparks

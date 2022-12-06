@@ -1,3 +1,7 @@
 #include "sparks/assets/model.h"
 
-namespace sparks {}
+namespace sparks {
+const char *Model::GetDefaultEntityName() {
+  return "Unknown Model";
+}
+}  // namespace sparks

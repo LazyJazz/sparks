@@ -123,12 +123,14 @@ void App::OnInit() {
   core_->SetDropCallback([this](int path_count, const char **paths) {
     for (int i = 0; i < path_count; i++) {
       auto path = paths[i];
+      LAND_INFO("Loading asset: {}", path);
       if (absl::EndsWith(path, ".png") || absl::EndsWith(path, ".jpg") ||
           absl::EndsWith(path, ".bmp") || absl::EndsWith(path, ".hdr") ||
           absl::EndsWith(path, ".jpeg")) {
         renderer_->LoadTexture(path);
+      } else if (absl::EndsWith(path, ".obj")) {
+        renderer_->LoadObjMesh(path);
       }
-      LAND_INFO("Loading asset: {}", path);
     }
   });
 
@@ -293,11 +295,7 @@ void App::UpdateImGui() {
     if (ImGui::RadioButton("Renderer", output_render_result_)) {
       output_render_result_ = true;
     }
-    reset_accumulation_ |= ImGui::SliderInt(
-        "Samples", &renderer_->GetRendererSettings().samples, 1, 16);
-    reset_accumulation_ |= ImGui::SliderInt(
-        "Bounces", &renderer_->GetRendererSettings().num_bounces, 1, 128);
-
+    ImGui::SameLine();
     if (renderer_->IsPaused()) {
       if (ImGui::Button("Resume")) {
         renderer_->ResumeWorkers();
@@ -307,6 +305,13 @@ void App::UpdateImGui() {
         renderer_->PauseWorkers();
       }
     }
+
+    reset_accumulation_ |= ImGui::SliderInt(
+        "Samples", &renderer_->GetRendererSettings().samples, 1, 16);
+    reset_accumulation_ |= ImGui::SliderInt(
+        "Bounces", &renderer_->GetRendererSettings().num_bounces, 1, 128);
+
+    scene.EntityCombo("Selected Entity", &selected_entity_id_);
 
     ImGui::NewLine();
     ImGui::Text("Camera");

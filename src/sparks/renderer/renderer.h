@@ -38,6 +38,7 @@ class Renderer {
 
   [[nodiscard]] bool IsPaused() const;
   int LoadTexture(const std::string &file_path);
+  int LoadObjMesh(const std::string &file_path);
 
   template <class ReturnType>
   ReturnType SafeOperation(const std::function<ReturnType()> &func) {

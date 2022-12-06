@@ -4,6 +4,7 @@
 #include "glm/gtc/matrix_transform.hpp"
 #include "imgui.h"
 #include "sparks/assets/accelerated_mesh.h"
+#include "sparks/util/util.h"
 
 namespace sparks {
 
@@ -27,9 +28,6 @@ Scene::Scene() {
 
   Texture texture;
   Texture::Load("../../textures/earth.jpg", texture);
-  //  AddEntity(Mesh::Sphere(glm::vec3{0.0f, 0.0f, 0.0f}, 0.5f),
-  //              Material{glm::vec3{1.0f}, AddTexture(texture)},
-  //              glm::translate(glm::mat4{1.0f}, glm::vec3{0.0f, 0.5f, 0.0f}));
   AddEntity(AcceleratedMesh(Mesh::Sphere(glm::vec3{0.0f, 0.0f, 0.0f}, 0.5f)),
             Material{glm::vec3{1.0f}, AddTexture(texture, "Earth")},
             glm::translate(glm::mat4{1.0f}, glm::vec3{0.0f, 0.5f, 0.0f}));
@@ -278,17 +276,43 @@ std::vector<const char *> Scene::GetTextureNameList() const {
   return result;
 }
 
+std::vector<const char *> Scene::GetEntityNameList() const {
+  std::vector<const char *> result;
+  result.reserve(entities_.size());
+  for (const auto &entity : entities_) {
+    result.push_back(entity.GetName().data());
+  }
+  return result;
+}
+
 bool Scene::TextureCombo(const char *label, int *current_item) const {
   return ImGui::Combo(label, current_item, GetTextureNameList().data(),
                       textures_.size());
 }
 
+bool Scene::EntityCombo(const char *label, int *current_item) const {
+  return ImGui::Combo(label, current_item, GetEntityNameList().data(),
+                      entities_.size());
+}
+
 int Scene::LoadTexture(const std::string &file_path) {
   Texture texture;
   if (Texture::Load(file_path, texture)) {
-    return AddTexture(texture, file_path);
+    return AddTexture(texture, PathToFilename(file_path));
   } else {
+    LAND_WARN("[Sparks] Load Texture \"{}\" failed.", file_path);
     return 0;
+  }
+}
+
+int Scene::LoadObjMesh(const std::string &file_path) {
+  AcceleratedMesh mesh;
+  if (Mesh::LoadObjFile(file_path, mesh)) {
+    mesh.BuildAccelerationStructure();
+    return AddEntity(mesh, Material{}, glm::mat4{1.0f},
+                     PathToFilename(file_path));
+  } else {
+    return -1;
   }
 }
 

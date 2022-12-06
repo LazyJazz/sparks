@@ -23,4 +23,15 @@ struct Vertex {
            tangent == vertex.tangent && tex_coord == tex_coord;
   }
 };
+
+struct VertexHash {
+  std::size_t operator()(const Vertex &v) const {
+    auto hash_eng = std::hash<float>();
+    return hash_eng(v.position.x) ^ hash_eng(v.position.y) ^
+           hash_eng(v.position.z) ^ hash_eng(v.normal.x) ^
+           hash_eng(v.normal.y) ^ hash_eng(v.normal.z) ^ hash_eng(v.tangent.x) ^
+           hash_eng(v.tangent.y) ^ hash_eng(v.tangent.z) ^
+           hash_eng(v.tex_coord.x) ^ hash_eng(v.tex_coord.y);
+  }
+};
 }  // namespace sparks

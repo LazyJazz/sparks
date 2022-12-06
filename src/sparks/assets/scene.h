@@ -30,6 +30,7 @@ class Scene {
   [[nodiscard]] std::vector<Entity> &GetEntities();
   [[nodiscard]] const std::vector<Entity> &GetEntities() const;
   [[nodiscard]] int GetEntityCount() const;
+  [[nodiscard]] std::vector<const char *> GetEntityNameList() const;
 
   void SetCamera(const Camera &camera);
   Camera &GetCamera();
@@ -63,7 +64,9 @@ class Scene {
                  HitRecord *hit_record) const;
 
   bool TextureCombo(const char *label, int *current_item) const;
+  bool EntityCombo(const char *label, int *current_item) const;
   int LoadTexture(const std::string &file_path);
+  int LoadObjMesh(const std::string &file_path);
 
  private:
   std::vector<Texture> textures_;

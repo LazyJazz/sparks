@@ -13,6 +13,7 @@ struct TreeNode {
 
 class AcceleratedMesh : public Mesh {
  public:
+  AcceleratedMesh() = default;
   explicit AcceleratedMesh(const Mesh &mesh);
   AcceleratedMesh(const std::vector<Vertex> &vertices,
                   const std::vector<uint32_t> &indices);
@@ -20,9 +21,9 @@ class AcceleratedMesh : public Mesh {
                  const glm::vec3 &direction,
                  float t_min,
                  HitRecord *hit_record) const override;
+  void BuildAccelerationStructure();
 
  private:
-  void BuildAccelerationStructure();
   void BuildTree(int &x,
                  std::pair<int, glm::vec3> *triangle_list,
                  int L,

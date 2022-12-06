@@ -19,5 +19,6 @@ class Model {
       const glm::mat4 &transform) const = 0;
   [[nodiscard]] virtual std::vector<Vertex> GetVertices() const = 0;
   [[nodiscard]] virtual std::vector<uint32_t> GetIndices() const = 0;
+  virtual const char *GetDefaultEntityName();
 };
 }  // namespace sparks
