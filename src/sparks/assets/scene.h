@@ -12,9 +12,12 @@ namespace sparks {
 class Scene {
  public:
   Scene();
-  int AddTexture(const Texture &texture);
+  int AddTexture(const Texture &texture,
+                 const std::string &name = "Unnamed Texture");
   [[nodiscard]] const std::vector<Texture> &GetTextures() const;
+  [[nodiscard]] const Texture &GetTexture(int texture_id) const;
   [[nodiscard]] int GetTextureCount() const;
+  [[nodiscard]] std::vector<const char *> GetTextureNameList() const;
 
   template <class... Args>
   int AddEntity(Args... args) {
@@ -59,8 +62,13 @@ class Scene {
                  float t_max,
                  HitRecord *hit_record) const;
 
+  bool TextureCombo(const char *label, int *current_item) const;
+  int LoadTexture(const std::string &file_path);
+
  private:
   std::vector<Texture> textures_;
+  std::vector<std::string> texture_names_;
+
   std::vector<Entity> entities_;
 
   int envmap_id_{0};

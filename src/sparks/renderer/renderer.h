@@ -36,8 +36,36 @@ class Renderer {
   void RetrieveAccumulationResult(glm::vec4 *accumulation_color_buffer_dst,
                                   float *accumulation_number_buffer_dst);
 
+  [[nodiscard]] bool IsPaused() const;
+  int LoadTexture(const std::string &file_path);
+
+  template <class ReturnType>
+  ReturnType SafeOperation(const std::function<ReturnType()> &func) {
+    bool is_paused = IsPaused();
+    if (!is_paused) {
+      PauseWorkers();
+    }
+    ReturnType result = func();
+    if (!is_paused) {
+      ResumeWorkers();
+    }
+    return result;
+  }
+  template <>
+  void SafeOperation(const std::function<void()> &func) {
+    bool is_paused = IsPaused();
+    if (!is_paused) {
+      PauseWorkers();
+    }
+    func();
+    if (!is_paused) {
+      ResumeWorkers();
+    }
+  }
+
  private:
   void WorkerThread();
+
   RendererSettings renderer_settings_;
   Scene scene_;
 

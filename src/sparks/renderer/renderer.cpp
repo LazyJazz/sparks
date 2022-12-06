@@ -139,54 +139,54 @@ RenderStateSignal Renderer::GetRenderStateSignal() const {
 }
 
 void Renderer::Resize(uint32_t width, uint32_t height) {
-  PauseWorkers();
-  width_ = width;
-  height_ = height;
-  accumulation_number_.resize(width_ * height_);
-  accumulation_color_.resize(width_ * height_);
-  std::memset(accumulation_number_.data(), 0,
-              sizeof(float) * accumulation_number_.size());
-  std::memset(accumulation_color_.data(), 0,
-              sizeof(glm::vec4) * accumulation_color_.size());
-  while (!task_queue_.empty()) {
-    task_queue_.pop();
-  }
-  const uint32_t task_width = 4;
-  const uint32_t task_height = 4;
-  std::vector<TaskInfo> task_list;
-  for (int i = 0; i < (width_ + task_width - 1) / task_width; i++) {
-    for (int j = 0; j < (height_ + task_height - 1) / task_height; j++) {
-      TaskInfo task_info{};
-      task_info.x = i * task_width;
-      task_info.y = j * task_height;
-      task_info.width = std::min(task_width, width_ - task_info.x);
-      task_info.height = std::min(task_height, height_ - task_info.y);
-      task_info.sample = 0;
-      task_list.push_back(task_info);
+  SafeOperation<void>([&]() {
+    width_ = width;
+    height_ = height;
+    accumulation_number_.resize(width_ * height_);
+    accumulation_color_.resize(width_ * height_);
+    std::memset(accumulation_number_.data(), 0,
+                sizeof(float) * accumulation_number_.size());
+    std::memset(accumulation_color_.data(), 0,
+                sizeof(glm::vec4) * accumulation_color_.size());
+    while (!task_queue_.empty()) {
+      task_queue_.pop();
     }
-  }
-  std::random_device rd;
-  std::mt19937 g(rd());
-  std::shuffle(task_list.begin(), task_list.end(), g);
-  for (auto &task : task_list) {
-    task_queue_.push(task);
-  }
-  ResumeWorkers();
+    const uint32_t task_width = 4;
+    const uint32_t task_height = 4;
+    std::vector<TaskInfo> task_list;
+    for (int i = 0; i < (width_ + task_width - 1) / task_width; i++) {
+      for (int j = 0; j < (height_ + task_height - 1) / task_height; j++) {
+        TaskInfo task_info{};
+        task_info.x = i * task_width;
+        task_info.y = j * task_height;
+        task_info.width = std::min(task_width, width_ - task_info.x);
+        task_info.height = std::min(task_height, height_ - task_info.y);
+        task_info.sample = 0;
+        task_list.push_back(task_info);
+      }
+    }
+    std::random_device rd;
+    std::mt19937 g(rd());
+    std::shuffle(task_list.begin(), task_list.end(), g);
+    for (auto &task : task_list) {
+      task_queue_.push(task);
+    }
+  });
 }
 
 void Renderer::ResetAccumulation() {
-  PauseWorkers();
-  std::memset(accumulation_number_.data(), 0,
-              sizeof(float) * accumulation_number_.size());
-  std::memset(accumulation_color_.data(), 0,
-              sizeof(glm::vec4) * accumulation_color_.size());
-  while (task_queue_.front().sample) {
-    auto task = task_queue_.front();
-    task_queue_.pop();
-    task.sample = 0;
-    task_queue_.push(task);
-  }
-  ResumeWorkers();
+  SafeOperation<void>([&]() {
+    std::memset(accumulation_number_.data(), 0,
+                sizeof(float) * accumulation_number_.size());
+    std::memset(accumulation_color_.data(), 0,
+                sizeof(glm::vec4) * accumulation_color_.size());
+    while (task_queue_.front().sample) {
+      auto task = task_queue_.front();
+      task_queue_.pop();
+      task.sample = 0;
+      task_queue_.push(task);
+    }
+  });
 }
 
 void Renderer::RayGeneration(int x,
@@ -217,6 +217,14 @@ void Renderer::RetrieveAccumulationResult(
               sizeof(glm::vec4) * accumulation_color_.size());
   std::memcpy(accumulation_number_buffer_dst, accumulation_number_.data(),
               sizeof(float) * accumulation_number_.size());
+}
+
+bool Renderer::IsPaused() const {
+  return render_state_signal_ == RENDER_STATE_SIGNAL_PAUSE;
+}
+
+int Renderer::LoadTexture(const std::string &file_path) {
+  return SafeOperation<int>([&]() { return scene_.LoadTexture(file_path); });
 }
 
 }  // namespace sparks

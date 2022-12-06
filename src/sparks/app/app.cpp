@@ -1,6 +1,7 @@
 ﻿#include "sparks/app/app.h"
 
 #include "ImGuizmo.h"
+#include "absl/strings/match.h"
 #include "glm/gtc/matrix_transform.hpp"
 #include "iostream"
 #include "sparks/util/util.h"
@@ -119,6 +120,18 @@ void App::OnInit() {
     host_result_render_node_->BuildRenderNode(width, height);
   });
 
+  core_->SetDropCallback([this](int path_count, const char **paths) {
+    for (int i = 0; i < path_count; i++) {
+      auto path = paths[i];
+      if (absl::EndsWith(path, ".png") || absl::EndsWith(path, ".jpg") ||
+          absl::EndsWith(path, ".bmp") || absl::EndsWith(path, ".hdr") ||
+          absl::EndsWith(path, ".jpeg")) {
+        renderer_->LoadTexture(path);
+      }
+      LAND_INFO("Loading asset: {}", path);
+    }
+  });
+
   LAND_INFO("Initializing ImGui.");
   core_->ImGuiInit(screen_frame_.get(), "../../fonts/NotoSansSC-Regular.otf",
                    24.0f);
@@ -169,8 +182,11 @@ void App::OnLoop() {
 
 void App::OnUpdate(uint32_t ms) {
   if (envmap_require_configure_) {
-    renderer_->GetScene().UpdateEnvmapConfiguration();
-    envmap_require_configure_ = false;
+    renderer_->SafeOperation<void>([&]() {
+      renderer_->GetScene().UpdateEnvmapConfiguration();
+      renderer_->ResetAccumulation();
+      envmap_require_configure_ = false;
+    });
   }
   UpdateImGui();
   UpdateDynamicBuffer();
@@ -282,6 +298,16 @@ void App::UpdateImGui() {
     reset_accumulation_ |= ImGui::SliderInt(
         "Bounces", &renderer_->GetRendererSettings().num_bounces, 1, 128);
 
+    if (renderer_->IsPaused()) {
+      if (ImGui::Button("Resume")) {
+        renderer_->ResumeWorkers();
+      }
+    } else {
+      if (ImGui::Button("Pause")) {
+        renderer_->PauseWorkers();
+      }
+    }
+
     ImGui::NewLine();
     ImGui::Text("Camera");
     ImGui::Separator();
@@ -298,6 +324,9 @@ void App::UpdateImGui() {
     ImGui::NewLine();
     ImGui::Text("Environment Map");
     ImGui::Separator();
+    envmap_require_configure_ |=
+        scene.TextureCombo("Envmap Texture", &scene.GetEnvmapId());
+    reset_accumulation_ |= envmap_require_configure_;
     reset_accumulation_ |= ImGui::SliderAngle(
         "Offset", &scene.GetEnvmapOffset(), 0.0f, 360.0f, "%.0f deg");
 
@@ -305,10 +334,18 @@ void App::UpdateImGui() {
       ImGui::NewLine();
       ImGui::Text("Material");
       ImGui::Separator();
+      static int current_item = 0;
+      std::vector<const char *> material_types = {"Lambertian", "Specular",
+                                                  "Transmissive", "Principled"};
       Material &material = scene.GetEntity(selected_entity_id_).GetMaterial();
+      reset_accumulation_ |=
+          ImGui::Combo("Type", reinterpret_cast<int *>(&material.material_type),
+                       material_types.data(), material_types.size());
       reset_accumulation_ |= ImGui::ColorEdit3(
           "Albedo Color", &material.albedo_color[0],
           ImGuiColorEditFlags_PickerHueWheel | ImGuiColorEditFlags_Float);
+      reset_accumulation_ |=
+          scene.TextureCombo("Albedo Texture", &material.albedo_texture_id);
     }
 
 #if !defined(NDEBUG)

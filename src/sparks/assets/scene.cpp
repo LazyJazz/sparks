@@ -2,16 +2,18 @@
 
 #include "glm/glm.hpp"
 #include "glm/gtc/matrix_transform.hpp"
+#include "imgui.h"
 #include "sparks/assets/accelerated_mesh.h"
 
 namespace sparks {
 
 Scene::Scene() {
-  textures_.push_back(Texture(1, 1, glm::vec4{1.0f}, SAMPLE_TYPE_LINEAR));
+  AddTexture(Texture(1, 1, glm::vec4{1.0f}, SAMPLE_TYPE_LINEAR), "Pure White");
+  AddTexture(Texture(1, 1, glm::vec4{0.0f}, SAMPLE_TYPE_LINEAR), "Pure Black");
   Texture envmap;
   Texture::Load(u8"../../textures/envmap_clouds_4k.hdr", envmap);
   envmap.SetSampleType(SAMPLE_TYPE_LINEAR);
-  envmap_id_ = AddTexture(envmap);
+  envmap_id_ = AddTexture(envmap, "Clouds");
   AddEntity(
       AcceleratedMesh({{{-1.0f, 0.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
                        {{-1.0f, 0.0f, -1.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f}},
@@ -29,12 +31,13 @@ Scene::Scene() {
   //              Material{glm::vec3{1.0f}, AddTexture(texture)},
   //              glm::translate(glm::mat4{1.0f}, glm::vec3{0.0f, 0.5f, 0.0f}));
   AddEntity(AcceleratedMesh(Mesh::Sphere(glm::vec3{0.0f, 0.0f, 0.0f}, 0.5f)),
-            Material{glm::vec3{1.0f}, AddTexture(texture)},
+            Material{glm::vec3{1.0f}, AddTexture(texture, "Earth")},
             glm::translate(glm::mat4{1.0f}, glm::vec3{0.0f, 0.5f, 0.0f}));
 }
 
-int Scene::AddTexture(const Texture &texture) {
+int Scene::AddTexture(const Texture &texture, const std::string &name) {
   textures_.push_back(texture);
+  texture_names_.push_back(name);
   return int(textures_.size() - 1);
 }
 
@@ -141,7 +144,7 @@ void Scene::UpdateEnvmapConfiguration() {
   auto inv_height = 1.0f / float(envmap_texture.GetHeight());
   for (int i = 0; i <= envmap_texture.GetHeight(); i++) {
     float x = float(i) * glm::pi<float>() * inv_height;
-    sample_scale_[i] = -std::cos(x);
+    sample_scale_[i] = (-std::cos(x) + 1.0f) * 0.5f;
   }
 
   auto width_height = envmap_texture.GetWidth() * envmap_texture.GetHeight();
@@ -260,6 +263,33 @@ glm::vec4 Scene::SampleEnvmap(const glm::vec3 &direction) const {
   }
   x *= INV_PI * 0.5;
   return textures_[envmap_id_].Sample(glm::vec2{x, y});
+}
+
+const Texture &Scene::GetTexture(int texture_id) const {
+  return textures_[texture_id];
+}
+
+std::vector<const char *> Scene::GetTextureNameList() const {
+  std::vector<const char *> result;
+  result.reserve(texture_names_.size());
+  for (const auto &texture_name : texture_names_) {
+    result.push_back(texture_name.data());
+  }
+  return result;
+}
+
+bool Scene::TextureCombo(const char *label, int *current_item) const {
+  return ImGui::Combo(label, current_item, GetTextureNameList().data(),
+                      textures_.size());
+}
+
+int Scene::LoadTexture(const std::string &file_path) {
+  Texture texture;
+  if (Texture::Load(file_path, texture)) {
+    return AddTexture(texture, file_path);
+  } else {
+    return 0;
+  }
 }
 
 }  // namespace sparks

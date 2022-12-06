@@ -11,14 +11,6 @@ AcceleratedMesh::AcceleratedMesh(const std::vector<Vertex> &vertices,
                                  const std::vector<uint32_t> &indices)
     : Mesh(vertices, indices) {
   BuildAccelerationStructure();
-  printf("%d\n", root_);
-  for (int i = 0; i < tree_node_.size(); i++) {
-    auto &node = tree_node_[i];
-    printf("(%f, %f, %f) (%f, %f, %f)\n", node.aabb.x_low, node.aabb.y_low,
-           node.aabb.z_low, node.aabb.x_high, node.aabb.y_high,
-           node.aabb.z_high);
-    printf("%d %d\n", node.child[0], node.child[1]);
-  }
 }
 
 void AcceleratedMesh::BuildAccelerationStructure() {

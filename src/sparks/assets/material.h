@@ -4,9 +4,11 @@
 
 namespace sparks {
 
-enum MaterialType : uint32_t {
+enum MaterialType : int {
   MATERIAL_TYPE_LAMBERTIAN = 0,
-  MATERIAL_TYPE_PRINCIPLED = 1
+  MATERIAL_TYPE_SPECULAR = 1,
+  MATERIAL_TYPE_TRANSMISSIVE = 2,
+  MATERIAL_TYPE_PRINCIPLED = 3
 };
 
 struct Material {

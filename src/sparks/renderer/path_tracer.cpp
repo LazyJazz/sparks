@@ -31,7 +31,8 @@ glm::vec3 PathTracer::SampleRay(glm::vec3 origin,
       origin = hit_record.position;
       direction = scene_->GetEnvmapLightDirection();
       emission += throughput * scene_->GetEnvmapMinorColor();
-      throughput *= std::max(glm::dot(direction, hit_record.normal), 0.0f);
+      throughput *=
+          std::max(glm::dot(direction, hit_record.normal), 0.0f) * 2.0f;
       if (scene_->TraceRay(origin, direction, 1e-3f, 1e3f, nullptr) < 0.0f) {
         emission += throughput * scene_->GetEnvmapMajorColor();
       }

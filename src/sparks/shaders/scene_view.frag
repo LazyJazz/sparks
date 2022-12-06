@@ -26,7 +26,7 @@ void main() {
   float sin_offset = sin(global_object.envmap_offset);
   float cos_offset = cos(global_object.envmap_offset);
   light += global_object.envmap_major_color *
-           max(dot(global_object.envmap_light_direction, normal), 0.0);
+           max(dot(global_object.envmap_light_direction, normal), 0.0) * 2.0;
   color_out =
       vec4(material.albedo_color * light, 1.0) *
       texture(texture_samplers[nonuniformEXT(material.albedo_texture_id)],
