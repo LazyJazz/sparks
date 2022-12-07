@@ -81,7 +81,7 @@ void Renderer::WorkerThread() {
           task_queue_.pop();
           auto push_task = my_task;
           push_task.sample += renderer_settings_.samples;
-          task_queue_.push(my_task);
+          task_queue_.push(push_task);
           break;
         }
       } else if (render_state_signal_ == RENDER_STATE_SIGNAL_PAUSE) {
@@ -180,11 +180,13 @@ void Renderer::ResetAccumulation() {
                 sizeof(float) * accumulation_number_.size());
     std::memset(accumulation_color_.data(), 0,
                 sizeof(glm::vec4) * accumulation_color_.size());
-    while (task_queue_.front().sample) {
-      auto task = task_queue_.front();
-      task_queue_.pop();
-      task.sample = 0;
-      task_queue_.push(task);
+    if (task_queue_.back().sample) {
+      for (int i = 0; i < task_queue_.size(); i++) {
+        auto task = task_queue_.front();
+        task_queue_.pop();
+        task.sample = 0;
+        task_queue_.push(task);
+      }
     }
   });
 }
@@ -194,6 +196,9 @@ void Renderer::RayGeneration(int x,
                              int sample,
                              glm::vec3 &color_result,
                              PathTracer &path_tracer) const {
+  std::mt19937 xrd(x);
+  std::mt19937 yrd(y + std::uniform_int_distribution<int>()(xrd));
+  std::mt19937 rd(sample + std::uniform_int_distribution<int>()(yrd));
   glm::vec2 pos{(float(x) + 0.5f) / float(width_),
                 (float(y) + 0.5f) / float(height_)};
   glm::vec2 range_low{float(x) / float(width_), float(y) / float(height_)};
@@ -201,8 +206,12 @@ void Renderer::RayGeneration(int x,
                        (float(y) + 1.0f) / float(height_)};
   glm::vec3 origin, direction;
 
-  scene_.GetCamera().GenerateRay(float(width_) / float(height_), range_low,
-                                 range_high, origin, direction);
+  scene_.GetCamera().GenerateRay(
+      float(width_) / float(height_), range_low, range_high, origin, direction,
+      std::uniform_real_distribution<float>(0.0f, 1.0f)(rd),
+      std::uniform_real_distribution<float>(0.0f, 1.0f)(rd),
+      std::uniform_real_distribution<float>(0.0f, 1.0f)(rd),
+      std::uniform_real_distribution<float>(0.0f, 1.0f)(rd));
   auto camera_to_world = scene_.GetCameraToWorld();
   origin = camera_to_world * glm::vec4(origin, 1.0f);
   direction = camera_to_world * glm::vec4(direction, 0.0f);
@@ -229,6 +238,11 @@ int Renderer::LoadTexture(const std::string &file_path) {
 
 int Renderer::LoadObjMesh(const std::string &file_path) {
   return SafeOperation<int>([&]() { return scene_.LoadObjMesh(file_path); });
+}
+
+int Renderer::GetAccumulatedSamples() {
+  std::unique_lock<std::mutex> lock(task_queue_mutex_);
+  return task_queue_.front().sample;
 }
 
 }  // namespace sparks

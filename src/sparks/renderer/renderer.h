@@ -64,6 +64,8 @@ class Renderer {
     }
   }
 
+  int GetAccumulatedSamples();
+
  private:
   void WorkerThread();
 

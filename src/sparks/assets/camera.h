@@ -19,5 +19,7 @@ class Camera {
 
  private:
   float fov_{60.0f};
+  float aperture_{0.0f};
+  float focal_length_{3.0f};
 };
 }  // namespace sparks

@@ -2,6 +2,7 @@
 
 #include "ImGuizmo.h"
 #include "absl/strings/match.h"
+#include "cmath"
 #include "glm/gtc/matrix_transform.hpp"
 #include "iostream"
 #include "sparks/util/util.h"
@@ -60,8 +61,13 @@ void App::OnInit() {
       VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
       VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
           VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-  stencil_host_buffer_.resize(core_->GetFramebufferWidth() *
-                              core_->GetFramebufferHeight());
+  render_frame_device_buffer_ = std::make_unique<vulkan::Buffer>(
+      core_->GetDevice(),
+      sizeof(glm::vec4) * core_->GetFramebufferWidth() *
+          core_->GetFramebufferHeight(),
+      VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+      VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+          VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
   renderer_->Resize(core_->GetFramebufferWidth(),
                     core_->GetFramebufferHeight());
   accumulation_number_ = std::make_unique<vulkan::framework::TextureImage>(
@@ -103,7 +109,11 @@ void App::OnInit() {
         VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
         VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
             VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
-    stencil_host_buffer_.resize(width * height);
+    render_frame_device_buffer_ = std::make_unique<vulkan::Buffer>(
+        core_->GetDevice(), sizeof(glm::vec4) * width * height,
+        VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+        VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+            VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
     renderer_->Resize(width, height);
     accumulation_color_->Resize(width, height);
     accumulation_number_->Resize(width, height);
@@ -246,6 +256,21 @@ void App::OnRender() {
       VK_ACCESS_TRANSFER_READ_BIT, VK_IMAGE_LAYOUT_GENERAL,
       VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
       VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
+
+  vulkan::TransitImageLayout(
+      command_buffer->GetHandle(), render_frame_->GetImage()->GetHandle(),
+      VK_IMAGE_LAYOUT_GENERAL, VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+      VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT,
+      VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_PIPELINE_STAGE_TRANSFER_BIT,
+      VK_ACCESS_TRANSFER_READ_BIT);
+  render_frame_->GetImage()->Retrieve(command_buffer,
+                                      render_frame_device_buffer_.get());
+  vulkan::TransitImageLayout(
+      command_buffer->GetHandle(), render_frame_->GetImage()->GetHandle(),
+      VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL, VK_PIPELINE_STAGE_TRANSFER_BIT,
+      VK_ACCESS_TRANSFER_READ_BIT, VK_IMAGE_LAYOUT_GENERAL,
+      VK_PIPELINE_STAGE_COLOR_ATTACHMENT_OUTPUT_BIT,
+      VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT);
   core_->TemporalSubmit();
   core_->ImGuiRender();
   core_->Output(screen_frame_.get());
@@ -379,9 +404,63 @@ void App::UpdateImGui() {
 
     ImGui::End();
 
+    ImVec2 statistic_window_size{0.0f, 0.0f};
     if (selected_entity_id_ != -1) {
+      ImGui::SetNextWindowPos(ImVec2(ImGui::GetIO().DisplaySize.x, 0.0),
+                              ImGuiCond_Always, ImVec2(1.0f, 0.0f));
+      ImGui::SetNextWindowBgAlpha(0.3);
+      ImGui::Begin("Gizmo", &global_settings_window_open_,
+                   ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove |
+                       ImGuiWindowFlags_NoTitleBar);
+      statistic_window_size = ImGui::GetWindowSize();
       reset_accumulation_ |= UpdateImGuizmo();
+      ImGui::End();
     }
+
+    ImGui::SetNextWindowPos(
+        ImVec2(ImGui::GetIO().DisplaySize.x, statistic_window_size.y),
+        ImGuiCond_Always, ImVec2(1.0f, 0.0f));
+    ImGui::SetNextWindowBgAlpha(0.3f);
+    ImGui::Begin("Statistics", &global_settings_window_open_,
+                 ImGuiWindowFlags_NoMove | ImGuiWindowFlags_AlwaysAutoResize |
+                     ImGuiWindowFlags_NoTitleBar);
+    ImGui::Text("Statistics (%dx%d)", core_->GetFramebufferWidth(),
+                core_->GetFramebufferHeight());
+    ImGui::Separator();
+    auto current_sample = renderer_->GetAccumulatedSamples();
+    auto current_time = std::chrono::steady_clock::now();
+    static auto last_sample = current_sample;
+    static auto last_sample_time = current_time;
+    static float sample_rate = 0.0f;
+    if (last_sample != current_sample) {
+      if (last_sample < current_sample) {
+        auto duration_ms =
+            (current_time - last_sample_time) / std::chrono::milliseconds(1);
+        sample_rate = (float(core_->GetFramebufferWidth()) *
+                       float(core_->GetFramebufferHeight()) *
+                       float(renderer_->GetRendererSettings().samples)) /
+                      (0.001f * float(duration_ms));
+      } else {
+        sample_rate = NAN;
+      }
+      last_sample = current_sample;
+      last_sample_time = current_time;
+    }
+    if (std::isnan(sample_rate)) {
+      ImGui::Text("Primary Ray Rate: N/A");
+    } else if (sample_rate >= 1e9f) {
+      ImGui::Text("Primary Ray Rate: %.2f Gr/s", sample_rate * 1e-9f);
+    } else if (sample_rate >= 1e6f) {
+      ImGui::Text("Primary Ray Rate: %.2f Mr/s", sample_rate * 1e-6f);
+    } else if (sample_rate >= 1e3f) {
+      ImGui::Text("Primary Ray Rate: %.2f Kr/s", sample_rate * 1e-3f);
+    } else {
+      ImGui::Text("Primary Ray Rate: %.2f r/s", sample_rate);
+    }
+    ImGui::Text("Accumulated Samples: %d", current_sample);
+    ImGui::Text("R:%f G:%f B:%f", hovering_pixel_color_.x,
+                hovering_pixel_color_.y, hovering_pixel_color_.z);
+    ImGui::End();
   }
 
   if (!io.WantCaptureMouse) {
@@ -428,10 +507,15 @@ void App::UpdateHostStencilBuffer() {
   if (x < 0 || x >= core_->GetFramebufferWidth() || y < 0 ||
       y >= core_->GetFramebufferHeight()) {
     hover_entity_id_ = -1;
+    hovering_pixel_color_ = glm::vec4{0.0f};
   } else {
     hover_entity_id_ = *reinterpret_cast<int *>(
         stencil_device_buffer_->Map(sizeof(int), index * sizeof(int)));
     stencil_device_buffer_->Unmap();
+    hovering_pixel_color_ =
+        *reinterpret_cast<glm::vec4 *>(render_frame_device_buffer_->Map(
+            sizeof(glm::vec4), index * sizeof(glm::vec4)));
+    render_frame_device_buffer_->Unmap();
   }
 }
 
@@ -586,12 +670,8 @@ void App::RebuildRenderNode() {
 }
 bool App::UpdateImGuizmo() {
   bool value_changed = false;
-  ImGui::SetNextWindowPos(ImVec2(ImGui::GetIO().DisplaySize.x, 0.0f),
-                          ImGuiCond_Always, ImVec2(1.0f, 0.0f));
-  ImGui::SetNextWindowBgAlpha(0.3);
-
-  ImGui::Begin("Gizmo", &global_settings_window_open_,
-               ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove);
+  ImGui::Text("Gizmo");
+  ImGui::Separator();
 
   static ImGuizmo::OPERATION current_guizmo_operation(ImGuizmo::ROTATE);
   static ImGuizmo::MODE current_guizmo_mode(ImGuizmo::WORLD);
@@ -654,7 +734,6 @@ bool App::UpdateImGuizmo() {
       reinterpret_cast<float *>(&imguizmo_proj_), current_guizmo_operation,
       current_guizmo_mode, reinterpret_cast<float *>(&matrix), nullptr,
       nullptr);
-  ImGui::End();
   return value_changed;
 }
 
