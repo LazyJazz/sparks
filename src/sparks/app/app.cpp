@@ -11,11 +11,13 @@ namespace sparks {
 
 App::App(Renderer *renderer, const AppSettings &app_settings) {
   renderer_ = renderer;
+  app_settings_ = app_settings;
   vulkan::framework::CoreSettings core_settings;
   core_settings.window_title = "Sparks";
-  core_settings.window_width = app_settings.width;
-  core_settings.window_height = app_settings.height;
-  core_settings.validation_layer = app_settings.validation_layer;
+  core_settings.window_width = app_settings_.width;
+  core_settings.window_height = app_settings_.height;
+  core_settings.validation_layer = app_settings_.validation_layer;
+  core_settings.raytracing_pipeline_required = app_settings_.hardware_renderer;
   core_ = std::make_unique<vulkan::framework::Core>(core_settings);
 }
 
@@ -30,8 +32,11 @@ void App::Run() {
 }
 
 void App::OnInit() {
-  LAND_INFO("Starting worker threads.");
-  renderer_->StartWorkerThreads();
+  if (app_settings_.hardware_renderer) {
+  } else {
+    LAND_INFO("Starting worker threads.");
+    renderer_->StartWorkerThreads();
+  }
 
   LAND_INFO("Allocating visual pipeline textures.");
   screen_frame_ = std::make_unique<vulkan::framework::TextureImage>(
@@ -175,6 +180,7 @@ void App::OnInit() {
       core_->GetDevice(), VK_FILTER_LINEAR, VK_SAMPLER_ADDRESS_MODE_REPEAT);
   nearest_sampler_ = std::make_unique<vulkan::Sampler>(
       core_->GetDevice(), VK_FILTER_NEAREST, VK_SAMPLER_ADDRESS_MODE_REPEAT);
+
   ImGuizmo::Enable(true);
   LAND_INFO("Updating device assets.");
   UpdateDeviceAssets();
@@ -210,13 +216,27 @@ void App::OnUpdate(uint32_t ms) {
     UploadAccumulationResult();
   }
   if (reset_accumulation_) {
-    renderer_->ResetAccumulation();
-    reset_accumulation_ = false;
+    if (!app_settings_.hardware_renderer) {
+      renderer_->ResetAccumulation();
+      reset_accumulation_ = false;
+    }
+  }
+  if (app_settings_.hardware_renderer) {
+    UpdateTopLevelAccelerationStructure();
+  }
+  if (rebuild_ray_tracing_pipeline_) {
+    BuildRayTracingPipeline();
+    rebuild_ray_tracing_pipeline_ = false;
   }
 }
 
 void App::OnRender() {
   core_->BeginCommandRecord();
+  if (app_settings_.hardware_renderer && reset_accumulation_) {
+    accumulation_number_->ClearColor({0.0f, 0.0f, 0.0f, 0.0f});
+    accumulation_color_->ClearColor({0.0f, 0.0f, 0.0f, 0.0f});
+    reset_accumulation_ = false;
+  }
   render_frame_->ClearColor({0.0f, 0.0f, 0.0f, 1.0f});
   VkClearColorValue stencil_clear_color{};
   stencil_clear_color.uint32[0] = 0xffffffffu;
@@ -233,6 +253,9 @@ void App::OnRender() {
                              entity_asset.index_buffer->Size(), i);
   }
   render_node_->EndDraw();
+  if (app_settings_.hardware_renderer) {
+    ray_tracing_render_node_->Draw();
+  }
   if (output_render_result_) {
     host_result_render_node_->Draw(envmap_vertex_buffer_.get(),
                                    envmap_index_buffer_.get(),
@@ -284,7 +307,10 @@ void App::OnClose() {
   global_uniform_buffer_.reset();
   entity_uniform_buffer_.reset();
   screen_frame_.reset();
-  renderer_->StopWorkers();
+  if (app_settings_.hardware_renderer) {
+  } else {
+    renderer_->StopWorkers();
+  }
 }
 
 void App::UpdateImGui() {
@@ -320,14 +346,18 @@ void App::UpdateImGui() {
     if (ImGui::RadioButton("Renderer", output_render_result_)) {
       output_render_result_ = true;
     }
-    ImGui::SameLine();
-    if (renderer_->IsPaused()) {
-      if (ImGui::Button("Resume")) {
-        renderer_->ResumeWorkers();
-      }
+
+    if (app_settings_.hardware_renderer) {
     } else {
-      if (ImGui::Button("Pause")) {
-        renderer_->PauseWorkers();
+      ImGui::SameLine();
+      if (renderer_->IsPaused()) {
+        if (ImGui::Button("Resume")) {
+          renderer_->ResumeWorkers();
+        }
+      } else {
+        if (ImGui::Button("Pause")) {
+          renderer_->PauseWorkers();
+        }
       }
     }
 
@@ -521,6 +551,7 @@ void App::UpdateHostStencilBuffer() {
 
 void App::UpdateDeviceAssets() {
   auto &entities = renderer_->GetScene().GetEntities();
+  bool rebuild_tlas = false;
   for (int i = num_loaded_device_assets_; i < entities.size(); i++) {
     auto &entity = entities[i];
     auto vertices = entity.GetModel()->GetVertices();
@@ -533,8 +564,32 @@ void App::UpdateDeviceAssets() {
     device_asset.vertex_buffer->Upload(vertices.data());
     device_asset.index_buffer->Upload(indices.data());
     entity_device_assets_.push_back(std::move(device_asset));
+
+    if (app_settings_.hardware_renderer) {
+      rebuild_tlas = true;
+      bottom_level_acceleration_structures_.push_back(
+          std::make_unique<
+              vulkan::raytracing::BottomLevelAccelerationStructure>(
+              core_->GetDevice(), core_->GetCommandPool(), vertices, indices));
+    }
   }
   num_loaded_device_assets_ = int(entities.size());
+
+  if (rebuild_tlas) {
+    std::vector<std::pair<
+        vulkan::raytracing::BottomLevelAccelerationStructure *, glm::mat4>>
+        object_instances;
+    for (int i = 0; i < entities.size(); i++) {
+      auto &entity = entities[i];
+      object_instances.emplace_back(
+          bottom_level_acceleration_structures_[i].get(),
+          entity.GetTransformMatrix());
+    }
+    top_level_acceleration_structure_ =
+        std::make_unique<vulkan::raytracing::TopLevelAccelerationStructure>(
+            core_->GetDevice(), core_->GetCommandPool(), object_instances);
+    rebuild_ray_tracing_pipeline_ = true;
+  }
 
   auto &textures = renderer_->GetScene().GetTextures();
   if (num_loaded_device_textures_ != textures.size()) {
@@ -667,7 +722,10 @@ void App::RebuildRenderNode() {
   host_result_render_node_->VertexInput({VK_FORMAT_R32G32_SFLOAT});
   host_result_render_node_->BuildRenderNode(core_->GetFramebufferWidth(),
                                             core_->GetFramebufferHeight());
+
+  BuildRayTracingPipeline();
 }
+
 bool App::UpdateImGuizmo() {
   bool value_changed = false;
   ImGui::Text("Gizmo");
@@ -807,15 +865,52 @@ void App::UpdateCamera() {
 }
 
 void App::UploadAccumulationResult() {
-  renderer_->RetrieveAccumulationResult(
-      reinterpret_cast<glm::vec4 *>(host_accumulation_color_->Map()),
-      reinterpret_cast<float *>(host_accumulation_number_->Map()));
-  host_accumulation_number_->Unmap();
-  host_accumulation_color_->Unmap();
-  vulkan::UploadImage(core_->GetCommandPool(), accumulation_color_->GetImage(),
-                      host_accumulation_color_.get());
-  vulkan::UploadImage(core_->GetCommandPool(), accumulation_number_->GetImage(),
-                      host_accumulation_number_.get());
+  if (app_settings_.hardware_renderer) {
+  } else {
+    renderer_->RetrieveAccumulationResult(
+        reinterpret_cast<glm::vec4 *>(host_accumulation_color_->Map()),
+        reinterpret_cast<float *>(host_accumulation_number_->Map()));
+    host_accumulation_number_->Unmap();
+    host_accumulation_color_->Unmap();
+    vulkan::UploadImage(core_->GetCommandPool(),
+                        accumulation_color_->GetImage(),
+                        host_accumulation_color_.get());
+    vulkan::UploadImage(core_->GetCommandPool(),
+                        accumulation_number_->GetImage(),
+                        host_accumulation_number_.get());
+  }
+}
+
+void App::UpdateTopLevelAccelerationStructure() {
+  std::vector<std::pair<vulkan::raytracing::BottomLevelAccelerationStructure *,
+                        glm::mat4>>
+      object_instances;
+  auto &entities = renderer_->GetScene().GetEntities();
+  for (int i = 0; i < entities.size(); i++) {
+    auto &entity = entities[i];
+    object_instances.emplace_back(
+        bottom_level_acceleration_structures_[i].get(),
+        entity.GetTransformMatrix());
+  }
+  top_level_acceleration_structure_->UpdateAccelerationStructure(
+      core_->GetCommandPool(), object_instances);
+}
+
+void App::BuildRayTracingPipeline() {
+  ray_tracing_render_node_ =
+      std::make_unique<vulkan::framework::RayTracingRenderNode>(core_.get());
+  ray_tracing_render_node_->AddUniformBinding(
+      top_level_acceleration_structure_.get(), VK_SHADER_STAGE_RAYGEN_BIT_KHR);
+  ray_tracing_render_node_->AddUniformBinding(accumulation_color_.get(),
+                                              VK_SHADER_STAGE_RAYGEN_BIT_KHR);
+  ray_tracing_render_node_->AddUniformBinding(accumulation_number_.get(),
+                                              VK_SHADER_STAGE_RAYGEN_BIT_KHR);
+  ray_tracing_render_node_->AddUniformBinding(global_uniform_buffer_.get(),
+                                              VK_SHADER_STAGE_RAYGEN_BIT_KHR);
+  ray_tracing_render_node_->SetShaders("../../shaders/path_tracing.rgen.spv",
+                                       "../../shaders/path_tracing.rmiss.spv",
+                                       "../../shaders/path_tracing.rchit.spv");
+  ray_tracing_render_node_->BuildRenderNode();
 }
 
 }  // namespace sparks

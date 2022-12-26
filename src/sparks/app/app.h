@@ -28,10 +28,13 @@ class App {
   bool UpdateImGuizmo();
   void UpdateCamera();
   void UploadAccumulationResult();
+  void UpdateTopLevelAccelerationStructure();
 
   void RebuildRenderNode();
+  void BuildRayTracingPipeline();
 
   Renderer *renderer_{nullptr};
+  AppSettings app_settings_{};
 
   std::unique_ptr<vulkan::framework::Core> core_;
   std::unique_ptr<vulkan::framework::TextureImage> screen_frame_;
@@ -65,6 +68,14 @@ class App {
   std::unique_ptr<vulkan::Sampler> linear_sampler_;
   std::unique_ptr<vulkan::Sampler> nearest_sampler_;
 
+  std::vector<
+      std::unique_ptr<vulkan::raytracing::BottomLevelAccelerationStructure>>
+      bottom_level_acceleration_structures_;
+  std::unique_ptr<vulkan::raytracing::TopLevelAccelerationStructure>
+      top_level_acceleration_structure_;
+  std::unique_ptr<vulkan::framework::RayTracingRenderNode>
+      ray_tracing_render_node_;
+
   std::vector<EntityDeviceAsset> entity_device_assets_;
   int num_loaded_device_assets_{0};
 
@@ -82,5 +93,6 @@ class App {
 
   bool output_render_result_{false};
   bool reset_accumulation_{true};
+  bool rebuild_ray_tracing_pipeline_{false};
 };
 }  // namespace sparks
