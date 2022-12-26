@@ -940,6 +940,10 @@ void App::UpdateTopLevelAccelerationStructure() {
 }
 
 void App::BuildRayTracingPipeline() {
+  if (!app_settings_.hardware_renderer) {
+    return;
+  }
+
   std::vector<std::pair<vulkan::framework::TextureImage *, vulkan::Sampler *>>
       binding_texture_samplers_;
   for (auto &device_texture_sampler : device_texture_samplers_) {
