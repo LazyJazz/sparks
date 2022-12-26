@@ -9,8 +9,16 @@ struct GlobalUniformObject {
   vec3 envmap_major_color;
   int hover_id;
   int selected_id;
+  int accumulated_sample;
+  int num_samples;
+  int num_bounces;
 };
 
 struct EntityUniformObject {
   mat4 model;
+};
+
+struct ObjectInfo {
+  uint vertex_offset;
+  uint index_offset;
 };

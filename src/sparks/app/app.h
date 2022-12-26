@@ -4,6 +4,7 @@
 #include "sparks/app/entity_device_asset.h"
 #include "sparks/app/entity_uniform_object.h"
 #include "sparks/app/global_uniform_object.h"
+#include "sparks/app/object_info.h"
 #include "sparks/renderer/renderer.h"
 
 namespace sparks {
@@ -75,6 +76,15 @@ class App {
       top_level_acceleration_structure_;
   std::unique_ptr<vulkan::framework::RayTracingRenderNode>
       ray_tracing_render_node_;
+  std::unique_ptr<vulkan::framework::StaticBuffer<ObjectInfo>>
+      object_info_buffer_;
+  std::unique_ptr<vulkan::framework::StaticBuffer<Vertex>>
+      ray_tracing_vertex_buffer_;
+  std::unique_ptr<vulkan::framework::StaticBuffer<uint32_t>>
+      ray_tracing_index_buffer_;
+  std::vector<ObjectInfo> object_info_data_;
+  std::vector<Vertex> ray_tracing_vertex_data_;
+  std::vector<uint32_t> ray_tracing_index_data_;
 
   std::vector<EntityDeviceAsset> entity_device_assets_;
   int num_loaded_device_assets_{0};
@@ -94,5 +104,6 @@ class App {
   bool output_render_result_{false};
   bool reset_accumulation_{true};
   bool rebuild_ray_tracing_pipeline_{false};
+  uint32_t accumulated_sample_{0};
 };
 }  // namespace sparks

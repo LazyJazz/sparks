@@ -80,7 +80,7 @@ void Renderer::WorkerThread() {
           my_task = task_queue_.front();
           task_queue_.pop();
           auto push_task = my_task;
-          push_task.sample += renderer_settings_.samples;
+          push_task.sample += renderer_settings_.num_samples;
           task_queue_.push(push_task);
           break;
         }
@@ -110,7 +110,7 @@ void Renderer::WorkerThread() {
         uint32_t x = j + my_task.x;
         uint32_t y = i + my_task.y;
         sample_result[id] = glm::vec3{0.0f};
-        for (int k = 0; k < renderer_settings_.samples; k++) {
+        for (int k = 0; k < renderer_settings_.num_samples; k++) {
           glm::vec3 result;
           RayGeneration(int(x), int(y), int(my_task.sample) + k, result,
                         path_tracer);
@@ -127,7 +127,7 @@ void Renderer::WorkerThread() {
         accumulation_color_[accumulation_id] +=
             glm::vec4{sample_result[id], 1.0f};
         accumulation_number_[accumulation_id] +=
-            float(renderer_settings_.samples);
+            float(renderer_settings_.num_samples);
       }
     }
     lock.unlock();
