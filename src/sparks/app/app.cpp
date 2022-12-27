@@ -133,6 +133,10 @@ void App::OnInit() {
         VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
             VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
     host_result_render_node_->BuildRenderNode(width, height);
+    if (app_settings_.hardware_renderer) {
+      ray_tracing_render_node_->BuildRenderNode();
+    }
+    reset_accumulation_ = true;
   });
 
   core_->SetDropCallback([this](int path_count, const char **paths) {
