@@ -52,17 +52,6 @@ class Renderer {
     }
     return result;
   }
-  template <>
-  void SafeOperation(const std::function<void()> &func) {
-    bool is_paused = IsPaused();
-    if (!is_paused) {
-      PauseWorkers();
-    }
-    func();
-    if (!is_paused) {
-      ResumeWorkers();
-    }
-  }
 
   int GetAccumulatedSamples();
 
@@ -91,4 +80,7 @@ class Renderer {
   uint32_t width_{0};
   uint32_t height_{0};
 };
+
+template <>
+void Renderer::SafeOperation(const std::function<void()> &func);
 }  // namespace sparks

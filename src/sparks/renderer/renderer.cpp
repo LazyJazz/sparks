@@ -245,4 +245,15 @@ int Renderer::GetAccumulatedSamples() {
   return task_queue_.front().sample;
 }
 
+template <>
+void Renderer::SafeOperation(const std::function<void()> &func) {
+  bool is_paused = IsPaused();
+  if (!is_paused) {
+    PauseWorkers();
+  }
+  func();
+  if (!is_paused) {
+    ResumeWorkers();
+  }
+}
 }  // namespace sparks
