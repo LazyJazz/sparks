@@ -18,6 +18,7 @@ App::App(Renderer *renderer, const AppSettings &app_settings) {
   core_settings.window_height = app_settings_.height;
   core_settings.validation_layer = app_settings_.validation_layer;
   core_settings.raytracing_pipeline_required = app_settings_.hardware_renderer;
+  core_settings.selected_device = app_settings.selected_device;
   core_ = std::make_unique<vulkan::framework::Core>(core_settings);
 }
 
