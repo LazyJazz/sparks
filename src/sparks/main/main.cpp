@@ -13,6 +13,7 @@ ABSL_FLAG(bool,
 ABSL_FLAG(uint32_t, width, 1920, "Window width");
 ABSL_FLAG(uint32_t, height, 1080, "Window height");
 ABSL_FLAG(bool, vkrt, false, "Use Vulkan Ray Tracing pipeline");
+ABSL_FLAG(int, device, -1, "Select physical device manually");
 
 void RunApp(sparks::Renderer *renderer);
 
@@ -33,6 +34,7 @@ void RunApp(sparks::Renderer *renderer) {
   app_settings.width = absl::GetFlag(FLAGS_width);
   app_settings.height = absl::GetFlag(FLAGS_height);
   app_settings.hardware_renderer = absl::GetFlag(FLAGS_vkrt);
+  app_settings.selected_device = absl::GetFlag(FLAGS_device);
   sparks::App app(renderer, app_settings);
   app.Run();
 }
