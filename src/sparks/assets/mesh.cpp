@@ -288,7 +288,12 @@ const char *Mesh::GetDefaultEntityName() {
 }
 
 Mesh::Mesh(const tinyxml2::XMLElement *element) {
-  std::string mesh_type = element->FindAttribute("type")->Value();
+  std::string mesh_type{};
+  auto element_type = element->FindAttribute("type");
+  if (element_type) {
+    mesh_type = element_type->Value();
+  }
+
   if (mesh_type == "sphere") {
     glm::vec3 center{0.0f};
     float radius{1.0f};
@@ -309,7 +314,58 @@ Mesh::Mesh(const tinyxml2::XMLElement *element) {
         element->FirstChildElement("filename")->FindAttribute("value")->Value(),
         *this);
   } else {
-    LAND_ERROR("Unknown Mesh Type: {}", mesh_type);
+    std::vector<Vertex> vertices{};
+    std::vector<uint32_t> indices{};
+    for (auto vertex_element = element->FirstChildElement("vertex");
+         vertex_element;
+         vertex_element = vertex_element->NextSiblingElement("vertex")) {
+      Vertex vertex{{0.0f, 0.0f, 0.0f}, {0.0f, 0.0f, 0.0f}, {0.0f, 0.0f}};
+      auto attribute = vertex_element->FindAttribute("position");
+      if (attribute) {
+        vertex.position = StringToVec3(attribute->Value());
+      }
+      attribute = vertex_element->FindAttribute("normal");
+      if (attribute) {
+        vertex.normal = StringToVec3(attribute->Value());
+      }
+      attribute = vertex_element->FindAttribute("tex_coord");
+      if (attribute) {
+        vertex.tex_coord = StringToVec2(attribute->Value());
+      }
+      vertices.push_back(vertex);
+    }
+
+    for (auto index_element = element->FirstChildElement("index");
+         index_element;
+         index_element = index_element->NextSiblingElement("index")) {
+      uint32_t index =
+          std::stoul(index_element->FindAttribute("value")->Value());
+      indices.push_back(index);
+    }
+
+    for (int i = 0; i < indices.size(); i += 3) {
+      auto v0 = vertices[indices[i]];
+      auto v1 = vertices[indices[i + 1]];
+      auto v2 = vertices[indices[i + 2]];
+      auto geom_normal = glm::normalize(
+          glm::cross(v1.position - v0.position, v2.position - v0.position));
+      if (glm::length(v0.normal) < 0.5f) {
+        v0.normal = geom_normal;
+      }
+      if (glm::length(v1.normal) < 0.5f) {
+        v1.normal = geom_normal;
+      }
+      if (glm::length(v2.normal) < 0.5f) {
+        v2.normal = geom_normal;
+      }
+      vertices_.push_back(v0);
+      vertices_.push_back(v1);
+      vertices_.push_back(v2);
+      indices_.push_back(i);
+      indices_.push_back(i + 1);
+      indices_.push_back(i + 2);
+    }
+    MergeVertices();
   }
 }
 

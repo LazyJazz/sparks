@@ -23,6 +23,15 @@ glm::mat4 ComposeRotation(glm::vec3 pitch_yaw_roll) {
                      glm::vec3{0.0f, 0.0f, 1.0f});
 }
 
+glm::vec2 StringToVec2(const std::string &s) {
+  std::istringstream ss(s);
+  std::vector<float> v;
+  std::string word;
+  while (ss >> word)
+    v.push_back(std::stof(word));
+  return {v[0], v[1]};
+}
+
 glm::vec3 StringToVec3(const std::string &s) {
   std::istringstream ss(s);
   std::vector<float> v;
@@ -88,5 +97,4 @@ glm::mat4 XmlComposeTransformMatrix(tinyxml2::XMLElement *object_element) {
   }
   return result;
 }
-
 }  // namespace sparks

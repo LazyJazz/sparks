@@ -354,13 +354,20 @@ Scene::Scene(const std::string &filename) : Scene() {
 
       glm::mat4 transformation = XmlComposeTransformMatrix(child_element);
 
-      AddEntity(AcceleratedMesh(mesh), material, transformation);
+      auto name_attribute = child_element->FindAttribute("name");
+      if (name_attribute) {
+        AddEntity(AcceleratedMesh(mesh), material, transformation,
+                  std::string(name_attribute->Value()));
+      } else {
+        AddEntity(AcceleratedMesh(mesh), material, transformation);
+      }
     } else {
       LAND_ERROR("Unknown Element Type: {}", child_element->Value());
     }
   }
 
   SetCameraToWorld(camera_to_world);
+  UpdateEnvmapConfiguration();
 }
 
 }  // namespace sparks

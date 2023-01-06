@@ -25,7 +25,7 @@
 		<transform type="translate" value="0.0 0.5 0.0"/>
 
 		<material type="lambertian">
-			<albedo value="0.1 0.1 0.1"/>
+			<albedo value="1 1 1"/>
 			<albedo_texture value="../../textures/earth.jpg"/>
 		</material>
 	</model>

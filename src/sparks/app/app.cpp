@@ -150,6 +150,22 @@ void App::OnInit() {
         renderer_->LoadTexture(path);
       } else if (absl::EndsWith(path, ".obj")) {
         renderer_->LoadObjMesh(path);
+      } else if (absl::EndsWith(path, ".xml")) {
+        renderer_->LoadScene(path);
+        renderer_->ResetAccumulation();
+        num_loaded_device_textures_ = 0;
+        num_loaded_device_assets_ = 0;
+        device_texture_samplers_.clear();
+        entity_device_assets_.clear();
+        selected_entity_id_ = -1;
+        if (app_settings_.hardware_renderer) {
+          reset_accumulation_ = true;
+          top_level_acceleration_structure_.reset();
+          bottom_level_acceleration_structures_.clear();
+          object_info_data_.clear();
+          ray_tracing_vertex_data_.clear();
+          ray_tracing_index_data_.clear();
+        }
       }
     }
   });
@@ -420,6 +436,14 @@ void App::UpdateImGui() {
           ImGuiColorEditFlags_PickerHueWheel | ImGuiColorEditFlags_Float);
       reset_accumulation_ |=
           scene.TextureCombo("Albedo Texture", &material.albedo_texture_id);
+      reset_accumulation_ |= ImGui::ColorEdit3(
+          "Emission", &material.emission[0],
+          ImGuiColorEditFlags_PickerHueWheel | ImGuiColorEditFlags_Float);
+      reset_accumulation_ |=
+          ImGui::SliderFloat("Emission Strength", &material.emission_strength,
+                             0.0f, 1e5f, "%.3f", ImGuiSliderFlags_Logarithmic);
+      reset_accumulation_ |=
+          ImGui::SliderFloat("Alpha", &material.alpha, 0.0f, 1.0f, "%.3f");
     }
 
 #if !defined(NDEBUG)

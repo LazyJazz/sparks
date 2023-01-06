@@ -245,6 +245,10 @@ int Renderer::GetAccumulatedSamples() {
   return task_queue_.front().sample;
 }
 
+void Renderer::LoadScene(const std::string &file_path) {
+  SafeOperation<void>([&]() { scene_ = Scene(file_path); });
+}
+
 template <>
 void Renderer::SafeOperation(const std::function<void()> &func) {
   bool is_paused = IsPaused();
