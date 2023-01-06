@@ -23,10 +23,10 @@ HitRecord GetHitRecord(RayPayload ray_payload, vec3 origin, vec3 direction) {
   hit_record.hit_entity_id = int(ray_payload.object_id);
 
   mat3 object_to_world = mat3(ray_payload.object_to_world);
-  hit_record.position = object_to_world *
-                            mat3(v0.position, v1.position, v2.position) *
-                            ray_payload.barycentric +
-                        ray_payload.object_to_world[3];
+  hit_record.position = ray_payload.object_to_world *
+                        vec4(mat3(v0.position, v1.position, v2.position) *
+                                 ray_payload.barycentric,
+                             1.0);
   hit_record.normal = normalize(transpose(inverse(object_to_world)) *
                                 mat3(v0.normal, v1.normal, v2.normal) *
                                 ray_payload.barycentric);

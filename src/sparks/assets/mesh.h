@@ -1,5 +1,6 @@
 #pragma once
 #include "sparks/assets/model.h"
+#include "sparks/assets/util.h"
 #include "sparks/assets/vertex.h"
 #include "vector"
 
@@ -10,6 +11,7 @@ class Mesh : public Model {
   Mesh(const Mesh &mesh);
   Mesh(const std::vector<Vertex> &vertices,
        const std::vector<uint32_t> &indices);
+  explicit Mesh(const tinyxml2::XMLElement *element);
   ~Mesh() override = default;
   [[nodiscard]] float TraceRay(const glm::vec3 &origin,
                                const glm::vec3 &direction,

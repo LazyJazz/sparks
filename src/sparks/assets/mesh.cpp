@@ -287,4 +287,30 @@ const char *Mesh::GetDefaultEntityName() {
   return "Mesh";
 }
 
+Mesh::Mesh(const tinyxml2::XMLElement *element) {
+  std::string mesh_type = element->FindAttribute("type")->Value();
+  if (mesh_type == "sphere") {
+    glm::vec3 center{0.0f};
+    float radius{1.0f};
+
+    auto child_element = element->FirstChildElement("center");
+    if (child_element) {
+      center = StringToVec3(child_element->FindAttribute("value")->Value());
+    }
+
+    child_element = element->FirstChildElement("radius");
+    if (child_element) {
+      radius = std::stof(child_element->FindAttribute("value")->Value());
+    }
+
+    *this = Mesh::Sphere(center, radius);
+  } else if (mesh_type == "obj") {
+    Mesh::LoadObjFile(
+        element->FirstChildElement("filename")->FindAttribute("value")->Value(),
+        *this);
+  } else {
+    LAND_ERROR("Unknown Mesh Type: {}", mesh_type);
+  }
+}
+
 }  // namespace sparks

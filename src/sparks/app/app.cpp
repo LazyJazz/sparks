@@ -481,7 +481,7 @@ void App::UpdateImGui() {
     static auto last_sample = current_sample;
     static auto last_sample_time = current_time;
     static float sample_rate = 0.0f;
-    float duration_us;
+    float duration_us = 0;
     if (last_sample != current_sample) {
       if (last_sample < current_sample) {
         auto duration_ms =

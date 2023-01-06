@@ -51,4 +51,8 @@ void Camera::GenerateRay(float aspect,
           focal_length_ -
       origin);
 }
+
+Camera::Camera(float fov, float aperture, float focal_length)
+    : fov_(fov), aperture_(aperture), focal_length_(focal_length) {
+}
 }  // namespace sparks

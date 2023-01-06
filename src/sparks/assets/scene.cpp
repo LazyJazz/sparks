@@ -11,26 +11,6 @@ namespace sparks {
 Scene::Scene() {
   AddTexture(Texture(1, 1, glm::vec4{1.0f}, SAMPLE_TYPE_LINEAR), "Pure White");
   AddTexture(Texture(1, 1, glm::vec4{0.0f}, SAMPLE_TYPE_LINEAR), "Pure Black");
-  Texture envmap;
-  Texture::Load(u8"../../textures/envmap_clouds_4k.hdr", envmap);
-  envmap.SetSampleType(SAMPLE_TYPE_LINEAR);
-  envmap_id_ = AddTexture(envmap, "Clouds");
-  AddEntity(
-      AcceleratedMesh({{{-1.0f, 0.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 0.0f}},
-                       {{-1.0f, 0.0f, -1.0f}, {0.0f, 1.0f, 0.0f}, {0.0f, 1.0f}},
-                       {{1.0f, 0.0f, 1.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 0.0f}},
-                       {{1.0f, 0.0f, -1.0f}, {0.0f, 1.0f, 0.0f}, {1.0f, 1.0f}}},
-                      {0, 1, 2, 2, 1, 3}),
-      Material{}, glm::mat4{1.0f});
-  SetCameraToWorld(glm::inverse(glm::lookAt(glm::vec3{2.0f, 1.0f, 3.0f},
-                                            glm::vec3{0.0f, 0.0f, 0.0f},
-                                            glm::vec3{0.0f, 1.0f, 0.0f})));
-
-  Texture texture;
-  Texture::Load("../../textures/earth.jpg", texture);
-  AddEntity(AcceleratedMesh(Mesh::Sphere(glm::vec3{0.0f, 0.0f, 0.0f}, 0.5f)),
-            Material{glm::vec3{1.0f}, AddTexture(texture, "Earth")},
-            glm::translate(glm::mat4{1.0f}, glm::vec3{0.0f, 0.5f, 0.0f}));
 }
 
 int Scene::AddTexture(const Texture &texture, const std::string &name) {
@@ -314,6 +294,73 @@ int Scene::LoadObjMesh(const std::string &file_path) {
   } else {
     return -1;
   }
+}
+
+Scene::Scene(const std::string &filename) : Scene() {
+  auto doc = std::make_unique<tinyxml2::XMLDocument>();
+  doc->LoadFile(filename.c_str());
+  tinyxml2::XMLElement *rootElement = doc->RootElement();
+
+  glm::mat4 camera_to_world = glm::inverse(
+      glm::lookAt(glm::vec3{2.0f, 1.0f, 3.0f}, glm::vec3{0.0f, 0.0f, 0.0f},
+                  glm::vec3{0.0f, 1.0f, 0.0f}));
+
+  for (tinyxml2::XMLElement *child_element = rootElement->FirstChildElement();
+       child_element; child_element = child_element->NextSiblingElement()) {
+    std::string element_type{child_element->Value()};
+    if (element_type == "envmap") {
+      std::string envmap_type = child_element->FindAttribute("type")->Value();
+      if (envmap_type == "file") {
+        std::string envmap_filename =
+            child_element->FindAttribute("value")->Value();
+        Texture envmap;
+        Texture::Load(envmap_filename, envmap);
+        envmap_id_ = AddTexture(envmap, PathToFilename(envmap_filename));
+      } else if (envmap_type == "color") {
+        glm::vec3 color =
+            StringToVec3(child_element->FindAttribute("value")->Value());
+        Texture envmap(1, 1, glm::vec4{color, 1.0f});
+        envmap_id_ = AddTexture(envmap, "Environment Map");
+      }
+    } else if (element_type == "camera") {
+      camera_to_world =
+          XmlTransformMatrix(child_element->FirstChildElement("transform"));
+      float fov = 60.0f;
+      float aperture = 0.0f;
+      float focal_length = 3.0f;
+      auto grandchild_element = child_element->FirstChildElement("fov");
+      if (grandchild_element) {
+        fov = std::stof(grandchild_element->FindAttribute("value")->Value());
+      }
+      grandchild_element = child_element->FirstChildElement("aperture");
+      if (grandchild_element) {
+        aperture =
+            std::stof(grandchild_element->FindAttribute("value")->Value());
+      }
+      grandchild_element = child_element->FirstChildElement("focal_length");
+      if (grandchild_element) {
+        focal_length =
+            std::stof(grandchild_element->FindAttribute("value")->Value());
+      }
+      camera_ = Camera(fov, aperture, focal_length);
+    } else if (element_type == "model") {
+      Mesh mesh = Mesh(child_element);
+      Material material{};
+
+      auto grandchild_element = child_element->FirstChildElement("material");
+      if (grandchild_element) {
+        material = Material(this, grandchild_element);
+      }
+
+      glm::mat4 transformation = XmlComposeTransformMatrix(child_element);
+
+      AddEntity(AcceleratedMesh(mesh), material, transformation);
+    } else {
+      LAND_ERROR("Unknown Element Type: {}", child_element->Value());
+    }
+  }
+
+  SetCameraToWorld(camera_to_world);
 }
 
 }  // namespace sparks
