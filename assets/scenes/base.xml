@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<scene>
+	<camera>
+		<transform type="lookat">
+			<eye value="2.0 1.0 3.0"/>
+			<center value="0.0 0.0 0.0"/>
+			<up value="0.0 1.0 0.0"/>
+		</transform>
+	</camera>
+
+	<envmap type="file" value="../../textures/envmap_clouds_4k.hdr"/>
+
+	<model type="obj">
+		<filename value="../../meshes/plane.obj"/>
+
+		<material type="lambertian">
+			<albedo value="0.8 0.8 0.8"/>
+		</material>
+	</model>
+
+	<model type="sphere">
+		<center value="0.0 0.0 0.0"/>
+		<radius value="0.5"/>
+
+		<transform type="translate" value="0.0 0.5 0.0"/>
+
+		<material type="lambertian">
+			<albedo value="1 1 1"/>
+			<albedo_texture value="../../textures/earth.jpg"/>
+		</material>
+	</model>
+
+</scene>

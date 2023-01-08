@@ -39,6 +39,7 @@ class Renderer {
   [[nodiscard]] bool IsPaused() const;
   int LoadTexture(const std::string &file_path);
   int LoadObjMesh(const std::string &file_path);
+  void LoadScene(const std::string &file_path);
 
   template <class ReturnType>
   ReturnType SafeOperation(const std::function<ReturnType()> &func) {
@@ -59,7 +60,7 @@ class Renderer {
   void WorkerThread();
 
   RendererSettings renderer_settings_;
-  Scene scene_;
+  Scene scene_{"../../scenes/base.xml"};
 
   /* CPU Renderer Assets */
   std::vector<glm::vec4> accumulation_color_;

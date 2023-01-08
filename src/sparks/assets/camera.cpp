@@ -8,7 +8,7 @@ namespace sparks {
 
 glm::mat4 Camera::GetProjectionMatrix(float aspect) const {
   return glm::scale(glm::mat4{1.0f}, glm::vec3{1.0f, -1.0f, 1.0f}) *
-         glm::perspectiveZO(glm::radians(fov_), aspect, 0.1f, 1000.0f);
+         glm::perspectiveZO(glm::radians(fov_), aspect, 0.1f, 2000.0f);
 }
 
 bool Camera::ImGuiItems() {
@@ -50,5 +50,9 @@ void Camera::GenerateRay(float aspect,
       glm::vec3{tan_fov * aspect * pos.x, tan_fov * pos.y, -1.0f} *
           focal_length_ -
       origin);
+}
+
+Camera::Camera(float fov, float aperture, float focal_length)
+    : fov_(fov), aperture_(aperture), focal_length_(focal_length) {
 }
 }  // namespace sparks
