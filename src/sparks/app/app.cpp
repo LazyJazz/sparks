@@ -615,6 +615,7 @@ void App::UpdateDynamicBuffer() {
   global_uniform_object.fov = camera.GetFov();
   global_uniform_object.aperture = camera.GetAperture();
   global_uniform_object.focal_length = camera.GetFocalLength();
+  global_uniform_object.clamp = camera.GetClamp();
   global_uniform_object.aspect = float(core_->GetFramebufferWidth()) /
                                  float(core_->GetFramebufferHeight());
 

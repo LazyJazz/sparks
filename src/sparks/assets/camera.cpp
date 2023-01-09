@@ -21,6 +21,8 @@ bool Camera::ImGuiItems() {
   value_changed |=
       ImGui::SliderFloat("Focal Length", &focal_length_, 0.1f, 10000.0f, "%.2f",
                          ImGuiSliderFlags_Logarithmic);
+  value_changed |= ImGui::SliderFloat("Clamp", &clamp_, 1.0f, 1000000.0f,
+                                      "%.2f", ImGuiSliderFlags_Logarithmic);
   return value_changed;
 }
 

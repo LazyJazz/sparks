@@ -18,6 +18,7 @@ struct GlobalUniformObject {
   float fov{glm::radians(60.0f)};
   float aperture{0.0f};
   float focal_length{3.0f};
+  float clamp{100.0f};
   float aspect{1.0f};
 };
 }  // namespace sparks

@@ -135,7 +135,8 @@ void main() {
     target *= -global_uniform_object.focal_length / target.z;
     target = vec3(camera_to_world * vec4(target, 1.0));
     vec3 direction = normalize(target - origin);
-    total_radiance += SampleRay(origin, direction);
+    total_radiance +=
+        clamp(SampleRay(origin, direction), 0.0, global_uniform_object.clamp);
   }
 
   imageStore(accumulation_color, ivec2(gl_LaunchIDEXT.xy),

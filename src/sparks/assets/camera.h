@@ -28,10 +28,14 @@ class Camera {
   [[nodiscard]] float GetFocalLength() const {
     return focal_length_;
   }
+  [[nodiscard]] float GetClamp() const {
+    return clamp_;
+  }
 
  private:
   float fov_{60.0f};
   float aperture_{0.0f};
   float focal_length_{3.0f};
+  float clamp_{100.0f};
 };
 }  // namespace sparks
