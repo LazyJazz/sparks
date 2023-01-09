@@ -1,13 +1,16 @@
 #include "sparks/assets/util.h"
 
-#include "ImGuizmo.h"
 #include "glm/gtc/matrix_transform.hpp"
 #include "grassland/grassland.h"
-#include "imgui.h"
 #include "iostream"
 #include "sstream"
 #include "unordered_map"
 #include "vector"
+
+// clang-format off
+#include "imgui.h"
+#include "ImGuizmo.h"
+// clang-format on
 
 namespace sparks {
 glm::vec3 DecomposeRotation(glm::mat3 R) {

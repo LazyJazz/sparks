@@ -118,8 +118,7 @@
         </material>
     </model>
 
-    <!--short block-->
-    <model type="obj" name="Short Block">
+    <model type="obj" name="Bunny">
         <filename value="../../meshes/bunny.obj"/>
         <transform type="world">
             <scale value="1000 1000 1000"/>
