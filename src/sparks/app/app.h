@@ -21,6 +21,7 @@ class App {
   void OnRender();
   void OnClose();
 
+  void Capture(const std::string &file_path);
   void UpdateImGui();
   void UpdateDynamicBuffer();
   void UpdateHostStencilBuffer();
@@ -41,13 +42,16 @@ class App {
   std::unique_ptr<vulkan::framework::TextureImage> screen_frame_;
   std::unique_ptr<vulkan::framework::TextureImage> render_frame_;
 
-  std::unique_ptr<vulkan::framework::RenderNode> render_node_;
+  std::unique_ptr<vulkan::framework::RenderNode> preview_render_node_;
+  std::unique_ptr<vulkan::framework::RenderNode> preview_render_node_far_;
   std::unique_ptr<vulkan::framework::TextureImage> depth_buffer_;
   std::unique_ptr<vulkan::framework::TextureImage> stencil_buffer_;
   std::unique_ptr<vulkan::Buffer> stencil_device_buffer_;
   std::unique_ptr<vulkan::Buffer> render_frame_device_buffer_;
   std::unique_ptr<vulkan::framework::DynamicBuffer<GlobalUniformObject>>
       global_uniform_buffer_;
+  std::unique_ptr<vulkan::framework::DynamicBuffer<GlobalUniformObject>>
+      global_uniform_buffer_far_;
   std::unique_ptr<vulkan::framework::DynamicBuffer<EntityUniformObject>>
       entity_uniform_buffer_;
   std::unique_ptr<vulkan::framework::DynamicBuffer<Material>>

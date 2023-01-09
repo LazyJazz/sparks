@@ -55,6 +55,14 @@ class Renderer {
   }
 
   int GetAccumulatedSamples();
+  std::vector<glm::vec4> CaptureRenderedImage();
+
+  [[nodiscard]] uint32_t GetWidth() const {
+    return width_;
+  }
+  [[nodiscard]] uint32_t GetHeight() const {
+    return height_;
+  }
 
  private:
   void WorkerThread();

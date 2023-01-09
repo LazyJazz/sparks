@@ -6,6 +6,7 @@
 #include "glm/gtc/matrix_transform.hpp"
 #include "iostream"
 #include "sparks/util/util.h"
+#include "stb_image_write.h"
 
 namespace sparks {
 
@@ -107,7 +108,7 @@ void App::OnInit() {
     render_frame_->Resize(width, height);
     depth_buffer_->Resize(width, height);
     stencil_buffer_->Resize(width, height);
-    render_node_->BuildRenderNode(width, height);
+    preview_render_node_->BuildRenderNode(width, height);
     envmap_render_node_->BuildRenderNode(width, height);
     postproc_render_node_->BuildRenderNode(width, height);
     stencil_device_buffer_ = std::make_unique<vulkan::Buffer>(
@@ -176,6 +177,9 @@ void App::OnInit() {
 
   LAND_INFO("Allocating visual pipeline buffers.");
   global_uniform_buffer_ =
+      std::make_unique<vulkan::framework::DynamicBuffer<GlobalUniformObject>>(
+          core_.get(), 1);
+  global_uniform_buffer_far_ =
       std::make_unique<vulkan::framework::DynamicBuffer<GlobalUniformObject>>(
           core_.get(), 1);
   entity_uniform_buffer_ =
@@ -262,14 +266,23 @@ void App::OnRender() {
   envmap_render_node_->Draw(envmap_vertex_buffer_.get(),
                             envmap_index_buffer_.get(),
                             envmap_index_buffer_->Size(), 0);
-  render_node_->BeginDraw();
+  preview_render_node_far_->BeginDraw();
   for (int i = 0; i < entity_device_assets_.size(); i++) {
     auto &entity_asset = entity_device_assets_[i];
-    render_node_->DrawDirect(entity_asset.vertex_buffer.get(),
-                             entity_asset.index_buffer.get(),
-                             entity_asset.index_buffer->Size(), i);
+    preview_render_node_far_->DrawDirect(entity_asset.vertex_buffer.get(),
+                                         entity_asset.index_buffer.get(),
+                                         entity_asset.index_buffer->Size(), i);
   }
-  render_node_->EndDraw();
+  preview_render_node_far_->EndDraw();
+  depth_buffer_->ClearDepth({1.0f, 0});
+  preview_render_node_->BeginDraw();
+  for (int i = 0; i < entity_device_assets_.size(); i++) {
+    auto &entity_asset = entity_device_assets_[i];
+    preview_render_node_->DrawDirect(entity_asset.vertex_buffer.get(),
+                                     entity_asset.index_buffer.get(),
+                                     entity_asset.index_buffer->Size(), i);
+  }
+  preview_render_node_->EndDraw();
   if (app_settings_.hardware_renderer) {
     ray_tracing_render_node_->Draw();
     accumulated_sample_ += renderer_->GetRendererSettings().num_samples;
@@ -327,9 +340,10 @@ void App::OnRender() {
 
 void App::OnClose() {
   entity_device_assets_.clear();
-  render_node_.reset();
+  preview_render_node_.reset();
   stencil_buffer_.reset();
   global_uniform_buffer_.reset();
+  global_uniform_buffer_far_.reset();
   entity_uniform_buffer_.reset();
   screen_frame_.reset();
   if (app_settings_.hardware_renderer) {
@@ -339,6 +353,13 @@ void App::OnClose() {
 }
 
 void App::UpdateImGui() {
+  uint32_t current_sample;
+  if (app_settings_.hardware_renderer) {
+    current_sample = accumulated_sample_;
+  } else {
+    current_sample = renderer_->GetAccumulatedSamples();
+  }
+
   ImGui_ImplVulkan_NewFrame();
   ImGui_ImplGlfw_NewFrame();
   ImGui::NewFrame();
@@ -384,6 +405,24 @@ void App::UpdateImGui() {
           renderer_->PauseWorkers();
         }
       }
+    }
+
+    ImGui::SameLine();
+    if (ImGui::Button("Capture")) {
+      auto tt = std::chrono::system_clock::to_time_t(
+          std::chrono::system_clock::now());
+#ifdef _WIN32
+      auto now = std::make_unique<std::tm>();
+      localtime_s(now.get(), &tt);
+#else
+      std::tm *now = std::localtime(&tt);
+#endif
+      std::string time_string;
+      Capture("screenshot_" + std::to_string(now->tm_year + 1900) + "_" +
+              std::to_string(now->tm_mon) + "_" + std::to_string(now->tm_mday) +
+              "_" + std::to_string(now->tm_hour) + "_" +
+              std::to_string(now->tm_min) + "_" + std::to_string(now->tm_sec) +
+              "_" + std::to_string(current_sample) + "spp.png");
     }
 
     if (app_settings_.hardware_renderer) {
@@ -495,12 +534,6 @@ void App::UpdateImGui() {
     ImGui::Text("Statistics (%dx%d)", core_->GetFramebufferWidth(),
                 core_->GetFramebufferHeight());
     ImGui::Separator();
-    uint32_t current_sample;
-    if (app_settings_.hardware_renderer) {
-      current_sample = accumulated_sample_;
-    } else {
-      current_sample = renderer_->GetAccumulatedSamples();
-    }
     auto current_time = std::chrono::steady_clock::now();
     static auto last_sample = current_sample;
     static auto last_sample_time = current_time;
@@ -554,22 +587,45 @@ void App::UpdateImGui() {
 }
 
 void App::UpdateDynamicBuffer() {
-  GlobalUniformObject guo{};
-  guo.projection = renderer_->GetScene().GetCamera().GetProjectionMatrix(
-      float(core_->GetFramebufferWidth()) /
-      float(core_->GetFramebufferHeight()));
-  guo.camera = glm::inverse(renderer_->GetScene().GetCameraToWorld());
-  guo.envmap_id = renderer_->GetScene().GetEnvmapId();
-  guo.envmap_offset = renderer_->GetScene().GetEnvmapOffset();
-  guo.hover_id = hover_entity_id_;
-  guo.selected_id = selected_entity_id_;
-  guo.envmap_light_direction = renderer_->GetScene().GetEnvmapLightDirection();
-  guo.envmap_minor_color = renderer_->GetScene().GetEnvmapMinorColor();
-  guo.envmap_major_color = renderer_->GetScene().GetEnvmapMajorColor();
-  guo.accumulated_sample = accumulated_sample_;
-  guo.num_samples = renderer_->GetRendererSettings().num_samples;
-  guo.num_bounces = renderer_->GetRendererSettings().num_bounces;
-  global_uniform_buffer_->operator[](0) = guo;
+  GlobalUniformObject global_uniform_object{};
+  global_uniform_object.projection =
+      renderer_->GetScene().GetCamera().GetProjectionMatrix(
+          float(core_->GetFramebufferWidth()) /
+              float(core_->GetFramebufferHeight()),
+          0.1f, 30.0f);
+  global_uniform_object.camera =
+      glm::inverse(renderer_->GetScene().GetCameraToWorld());
+  global_uniform_object.envmap_id = renderer_->GetScene().GetEnvmapId();
+  global_uniform_object.envmap_offset = renderer_->GetScene().GetEnvmapOffset();
+  global_uniform_object.hover_id = hover_entity_id_;
+  global_uniform_object.selected_id = selected_entity_id_;
+  global_uniform_object.envmap_light_direction =
+      renderer_->GetScene().GetEnvmapLightDirection();
+  global_uniform_object.envmap_minor_color =
+      renderer_->GetScene().GetEnvmapMinorColor();
+  global_uniform_object.envmap_major_color =
+      renderer_->GetScene().GetEnvmapMajorColor();
+  global_uniform_object.accumulated_sample = accumulated_sample_;
+  global_uniform_object.num_samples =
+      renderer_->GetRendererSettings().num_samples;
+  global_uniform_object.num_bounces =
+      renderer_->GetRendererSettings().num_bounces;
+
+  auto &camera = renderer_->GetScene().GetCamera();
+  global_uniform_object.fov = camera.GetFov();
+  global_uniform_object.aperture = camera.GetAperture();
+  global_uniform_object.focal_length = camera.GetFocalLength();
+  global_uniform_object.clamp = camera.GetClamp();
+  global_uniform_object.aspect = float(core_->GetFramebufferWidth()) /
+                                 float(core_->GetFramebufferHeight());
+
+  global_uniform_buffer_->operator[](0) = global_uniform_object;
+  global_uniform_object.projection =
+      renderer_->GetScene().GetCamera().GetProjectionMatrix(
+          float(core_->GetFramebufferWidth()) /
+              float(core_->GetFramebufferHeight()),
+          30.0f, 10000.0f);
+  global_uniform_buffer_far_->operator[](0) = global_uniform_object;
   auto &entities = renderer_->GetScene().GetEntities();
   for (int i = 0; i < entities.size(); i++) {
     auto &entity = entities[i];
@@ -719,35 +775,68 @@ void App::RebuildRenderNode() {
     binding_texture_samplers_.emplace_back(device_texture_sampler.first.get(),
                                            device_texture_sampler.second.get());
   }
-  render_node_ = std::make_unique<vulkan::framework::RenderNode>(core_.get());
-  render_node_->AddShader("../../shaders/scene_view.frag.spv",
-                          VK_SHADER_STAGE_FRAGMENT_BIT);
-  render_node_->AddShader("../../shaders/scene_view.vert.spv",
-                          VK_SHADER_STAGE_VERTEX_BIT);
-  render_node_->AddUniformBinding(
+  preview_render_node_ =
+      std::make_unique<vulkan::framework::RenderNode>(core_.get());
+  preview_render_node_->AddShader("../../shaders/scene_view.frag.spv",
+                                  VK_SHADER_STAGE_FRAGMENT_BIT);
+  preview_render_node_->AddShader("../../shaders/scene_view.vert.spv",
+                                  VK_SHADER_STAGE_VERTEX_BIT);
+  preview_render_node_->AddUniformBinding(
       global_uniform_buffer_.get(),
       VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
-  render_node_->AddBufferBinding(entity_uniform_buffer_.get(),
-                                 VK_SHADER_STAGE_VERTEX_BIT);
-  render_node_->AddBufferBinding(
+  preview_render_node_->AddBufferBinding(entity_uniform_buffer_.get(),
+                                         VK_SHADER_STAGE_VERTEX_BIT);
+  preview_render_node_->AddBufferBinding(
       material_uniform_buffer_.get(),
       VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
-  render_node_->AddUniformBinding(binding_texture_samplers_,
-                                  VK_SHADER_STAGE_FRAGMENT_BIT);
-  render_node_->AddColorAttachment(render_frame_.get());
-  render_node_->AddDepthAttachment(depth_buffer_.get());
-  render_node_->AddColorAttachment(
+  preview_render_node_->AddUniformBinding(binding_texture_samplers_,
+                                          VK_SHADER_STAGE_FRAGMENT_BIT);
+  preview_render_node_->AddColorAttachment(render_frame_.get());
+  preview_render_node_->AddDepthAttachment(depth_buffer_.get());
+  preview_render_node_->AddColorAttachment(
       stencil_buffer_.get(),
       VkPipelineColorBlendAttachmentState{
           VK_FALSE, VK_BLEND_FACTOR_SRC_ALPHA,
           VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA, VK_BLEND_OP_ADD,
           VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
           VK_BLEND_OP_ADD, VK_COLOR_COMPONENT_R_BIT});
-  render_node_->VertexInput(
+  preview_render_node_->VertexInput(
       {VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT,
        VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32_SFLOAT});
-  render_node_->BuildRenderNode(core_->GetFramebufferWidth(),
-                                core_->GetFramebufferHeight());
+  preview_render_node_->BuildRenderNode(core_->GetFramebufferWidth(),
+                                        core_->GetFramebufferHeight());
+
+  preview_render_node_far_ =
+      std::make_unique<vulkan::framework::RenderNode>(core_.get());
+  preview_render_node_far_->AddShader("../../shaders/scene_view.frag.spv",
+                                      VK_SHADER_STAGE_FRAGMENT_BIT);
+  preview_render_node_far_->AddShader("../../shaders/scene_view.vert.spv",
+                                      VK_SHADER_STAGE_VERTEX_BIT);
+  preview_render_node_far_->AddUniformBinding(
+      global_uniform_buffer_far_.get(),
+      VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+  preview_render_node_far_->AddBufferBinding(entity_uniform_buffer_.get(),
+                                             VK_SHADER_STAGE_VERTEX_BIT);
+  preview_render_node_far_->AddBufferBinding(
+      material_uniform_buffer_.get(),
+      VK_SHADER_STAGE_VERTEX_BIT | VK_SHADER_STAGE_FRAGMENT_BIT);
+  preview_render_node_far_->AddUniformBinding(binding_texture_samplers_,
+                                              VK_SHADER_STAGE_FRAGMENT_BIT);
+  preview_render_node_far_->AddColorAttachment(render_frame_.get());
+  preview_render_node_far_->AddDepthAttachment(depth_buffer_.get());
+  preview_render_node_far_->AddColorAttachment(
+      stencil_buffer_.get(),
+      VkPipelineColorBlendAttachmentState{
+          VK_FALSE, VK_BLEND_FACTOR_SRC_ALPHA,
+          VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA, VK_BLEND_OP_ADD,
+          VK_BLEND_FACTOR_ONE, VK_BLEND_FACTOR_ONE_MINUS_SRC_ALPHA,
+          VK_BLEND_OP_ADD, VK_COLOR_COMPONENT_R_BIT});
+  preview_render_node_far_->VertexInput(
+      {VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT,
+       VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32_SFLOAT});
+  preview_render_node_far_->BuildRenderNode(core_->GetFramebufferWidth(),
+                                            core_->GetFramebufferHeight());
+
   envmap_render_node_ =
       std::make_unique<vulkan::framework::RenderNode>(core_.get());
   envmap_render_node_->AddShader("../../shaders/envmap.frag.spv",
@@ -856,8 +945,8 @@ bool App::UpdateImGuizmo() {
   glm::mat4 imguizmo_view_ = glm::inverse(scene.GetCameraToWorld());
   glm::mat4 imguizmo_proj_ =
       glm::scale(glm::mat4{1.0f}, glm::vec3{1.0f, -1.0f, 1.0f}) *
-      scene.GetCamera().GetProjectionMatrix(float(io.DisplaySize.x) /
-                                            float(io.DisplaySize.y));
+      scene.GetCamera().GetProjectionMatrix(
+          float(io.DisplaySize.x) / float(io.DisplaySize.y), 0.1f, 10000.0f);
   ImGuizmo::SetRect(0, 0, io.DisplaySize.x, io.DisplaySize.y);
   value_changed |= ImGuizmo::Manipulate(
       reinterpret_cast<float *>(&imguizmo_view_),
@@ -1005,6 +1094,56 @@ void App::BuildRayTracingPipeline() {
                                        "../../shaders/path_tracing.rmiss.spv",
                                        "../../shaders/path_tracing.rchit.spv");
   ray_tracing_render_node_->BuildRenderNode();
+}
+
+void App::Capture(const std::string &file_path) {
+  LAND_INFO("Capture Saving... Path: [{}]", file_path);
+  auto write_buffer = [&file_path](glm::vec4 *buffer, int width, int height,
+                                   float scale) {
+    std::vector<uint8_t> buffer24bit(width * height * 3);
+    auto float2u8 = [](float v) {
+      return uint8_t(std::max(0, std::min(255, int(v * 255.0f))));
+    };
+    for (int i = 0; i < width * height; i++) {
+      buffer[i] *= scale;
+      buffer24bit[i * 3] = float2u8(pow(buffer[i].r, 1.0f / 2.2f));
+      buffer24bit[i * 3 + 1] = float2u8(pow(buffer[i].g, 1.0f / 2.2f));
+      buffer24bit[i * 3 + 2] = float2u8(pow(buffer[i].b, 1.0f / 2.2f));
+    }
+    if (absl::EndsWith(file_path, "png")) {
+      stbi_write_png(file_path.c_str(), width, height, 3, buffer24bit.data(),
+                     width * 3);
+    } else if (absl::EndsWith(file_path, "jpg") ||
+               absl::EndsWith(file_path, "jpeg")) {
+      stbi_write_jpg(file_path.c_str(), width, height, 3, buffer24bit.data(),
+                     100);
+    } else {
+      stbi_write_bmp(file_path.c_str(), width, height, 3, buffer24bit.data());
+    }
+  };
+
+  if (app_settings_.hardware_renderer) {
+    auto image = accumulation_color_->GetImage();
+    std::vector<glm::vec4> captured_buffer(image->GetWidth() *
+                                           image->GetHeight());
+    std::unique_ptr<vulkan::Buffer> image_buffer =
+        std::make_unique<vulkan::Buffer>(
+            core_->GetDevice(),
+            sizeof(glm::vec4) * image->GetWidth() * image->GetHeight(),
+            VK_BUFFER_USAGE_TRANSFER_SRC_BIT | VK_BUFFER_USAGE_TRANSFER_DST_BIT,
+            VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT |
+                VK_MEMORY_PROPERTY_HOST_COHERENT_BIT);
+    DownloadImage(core_->GetCommandPool(), image, image_buffer.get());
+    std::memcpy(captured_buffer.data(), image_buffer->Map(),
+                sizeof(glm::vec4) * image->GetWidth() * image->GetHeight());
+    float scale = 1.0f / float(std::max(1u, accumulated_sample_));
+    write_buffer(captured_buffer.data(), image->GetWidth(), image->GetHeight(),
+                 scale);
+  } else {
+    auto captured_buffer = renderer_->CaptureRenderedImage();
+    write_buffer(captured_buffer.data(), renderer_->GetWidth(),
+                 renderer_->GetHeight(), 1.0f);
+  }
 }
 
 }  // namespace sparks

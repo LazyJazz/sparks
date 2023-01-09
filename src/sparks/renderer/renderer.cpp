@@ -249,6 +249,17 @@ void Renderer::LoadScene(const std::string &file_path) {
   SafeOperation<void>([&]() { scene_ = Scene(file_path); });
 }
 
+std::vector<glm::vec4> Renderer::CaptureRenderedImage() {
+  std::vector<glm::vec4> result(width_ * height_);
+  SafeOperation<void>([&result, this]() {
+    for (int i = 0; i < width_ * height_; i++) {
+      result[i] = accumulation_color_[i] /
+                  float(std::max(1.0f, accumulation_number_[i]));
+    }
+  });
+  return result;
+}
+
 template <>
 void Renderer::SafeOperation(const std::function<void()> &func) {
   bool is_paused = IsPaused();

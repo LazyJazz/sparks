@@ -6,6 +6,12 @@ struct HitRecord {
   vec3 tangent;
   vec2 tex_coord;
   bool front_face;
+
+  vec3 base_color;
+  vec3 emission;
+  float emission_strength;
+  float alpha;
+  uint material_type;
 };
 
 HitRecord GetHitRecord(RayPayload ray_payload, vec3 origin, vec3 direction) {
@@ -27,6 +33,7 @@ HitRecord GetHitRecord(RayPayload ray_payload, vec3 origin, vec3 direction) {
                         vec4(mat3(v0.position, v1.position, v2.position) *
                                  ray_payload.barycentric,
                              1.0);
+
   hit_record.normal = normalize(transpose(inverse(object_to_world)) *
                                 mat3(v0.normal, v1.normal, v2.normal) *
                                 ray_payload.barycentric);
@@ -36,9 +43,18 @@ HitRecord GetHitRecord(RayPayload ray_payload, vec3 origin, vec3 direction) {
   hit_record.tangent =
       normalize(object_to_world * mat3(v0.tangent, v1.tangent, v2.tangent) *
                 ray_payload.barycentric);
-  hit_record.tex_coord = v0.tex_coord * ray_payload.barycentric.x +
-                         v1.tex_coord * ray_payload.barycentric.y +
-                         v2.tex_coord * ray_payload.barycentric.z;
+  hit_record.tex_coord = mat3x2(v0.tex_coord, v1.tex_coord, v2.tex_coord) *
+                         ray_payload.barycentric;
+
+  Material mat = materials[hit_record.hit_entity_id];
+  hit_record.base_color =
+      mat.albedo_color *
+      texture(texture_samplers[mat.albedo_texture_id], hit_record.tex_coord)
+          .xyz;
+  hit_record.emission = mat.emission;
+  hit_record.emission_strength = mat.emission_strength;
+  hit_record.alpha = mat.alpha;
+  hit_record.material_type = mat.material_type;
 
   if (dot(hit_record.geometry_normal, hit_record.normal) < 0.0) {
     hit_record.geometry_normal = -hit_record.geometry_normal;

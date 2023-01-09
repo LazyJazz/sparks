@@ -6,9 +6,11 @@
 
 namespace sparks {
 
-glm::mat4 Camera::GetProjectionMatrix(float aspect) const {
+glm::mat4 Camera::GetProjectionMatrix(float aspect,
+                                      float t_min,
+                                      float t_max) const {
   return glm::scale(glm::mat4{1.0f}, glm::vec3{1.0f, -1.0f, 1.0f}) *
-         glm::perspectiveZO(glm::radians(fov_), aspect, 0.1f, 2000.0f);
+         glm::perspectiveZO(glm::radians(fov_), aspect, t_min, t_max);
 }
 
 bool Camera::ImGuiItems() {
@@ -19,6 +21,8 @@ bool Camera::ImGuiItems() {
   value_changed |=
       ImGui::SliderFloat("Focal Length", &focal_length_, 0.1f, 10000.0f, "%.2f",
                          ImGuiSliderFlags_Logarithmic);
+  value_changed |= ImGui::SliderFloat("Clamp", &clamp_, 1.0f, 1000000.0f,
+                                      "%.2f", ImGuiSliderFlags_Logarithmic);
   return value_changed;
 }
 
