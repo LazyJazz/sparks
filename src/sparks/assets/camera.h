@@ -5,7 +5,9 @@ namespace sparks {
 class Camera {
  public:
   Camera(float fov = 60.0f, float aperture = 0.0f, float focal_length = 3.0f);
-  [[nodiscard]] glm::mat4 GetProjectionMatrix(float aspect) const;
+  [[nodiscard]] glm::mat4 GetProjectionMatrix(float aspect,
+                                              float t_min,
+                                              float t_max) const;
   void GenerateRay(float aspect,
                    glm::vec2 range_low,
                    glm::vec2 range_high,
