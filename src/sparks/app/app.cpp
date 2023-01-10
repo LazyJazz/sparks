@@ -366,43 +366,42 @@ void App::UpdateImGui() {
                      ImGuiWindowFlags_NoResize | ImGuiWindowFlags_MenuBar);
     if (ImGui::BeginMenuBar()) {
       if (ImGui::BeginMenu("File")) {
-        {
-          char *result{nullptr};
-          if (ImGui::MenuItem("Open Scene")) {
-            std::vector<const char *> file_types = {"*.xml"};
-            result = tinyfd_openFileDialog("Open Scene", "", file_types.size(),
-                                           file_types.data(),
-                                           "Scene files (*.xml)", 0);
-          }
-          if (ImGui::MenuItem("Import Image..")) {
-            std::vector<const char *> file_types = {"*.bmp", "*.png", "*.jpg",
-                                                    "*.hdr"};
-            result = tinyfd_openFileDialog(
-                "Import Image", "", file_types.size(), file_types.data(),
-                "Image Files (*.bmp, *.jpg, *.png, *hdr)", 1);
-          }
-          if (ImGui::MenuItem("Import Mesh..")) {
-            std::vector<const char *> file_types = {"*.obj"};
-            result = tinyfd_openFileDialog("Import Mesh", "", file_types.size(),
-                                           file_types.data(),
-                                           "Mesh Files (*.obj)", 1);
-          }
-          if (result) {
-            std::vector<std::string> file_paths = absl::StrSplit(result, "|");
-            for (auto &file_path : file_paths) {
-              OpenFile(file_path);
-            }
+        char *result{nullptr};
+        if (ImGui::MenuItem("Open Scene")) {
+          std::vector<const char *> file_types = {"*.xml"};
+          result = tinyfd_openFileDialog("Open Scene", "", file_types.size(),
+                                         file_types.data(),
+                                         "Scene files (*.xml)", 0);
+        }
+        if (ImGui::MenuItem("Import Image..")) {
+          std::vector<const char *> file_types = {"*.bmp", "*.png", "*.jpg",
+                                                  "*.hdr"};
+          result = tinyfd_openFileDialog(
+              "Import Image", "", file_types.size(), file_types.data(),
+              "Image Files (*.bmp, *.jpg, *.png, *hdr)", 1);
+        }
+        if (ImGui::MenuItem("Import Mesh..")) {
+          std::vector<const char *> file_types = {"*.obj"};
+          result =
+              tinyfd_openFileDialog("Import Mesh", "", file_types.size(),
+                                    file_types.data(), "Mesh Files (*.obj)", 1);
+        }
+        if (result) {
+          std::vector<std::string> file_paths = absl::StrSplit(result, "|");
+          for (auto &file_path : file_paths) {
+            OpenFile(file_path);
           }
         }
+
         ImGui::Separator();
         if (ImGui::MenuItem("Capture and Save..")) {
-          std::vector<const wchar_t *> file_types = {L"*.bmp", L"*.png",
-                                                     L"*.jpg", L"*.hdr"};
-          auto result = tinyfd_saveFileDialogW(
-              L"Save Captured Image", L"", file_types.size(), file_types.data(),
-              L"Image Files (*.bmp, *.jpg, *.png, *hdr)");
+          std::vector<const char *> file_types = {"*.bmp", "*.png", "*.jpg",
+                                                  "*.hdr"};
+          result = tinyfd_saveFileDialog(
+              "Save Captured Image", "", file_types.size(), file_types.data(),
+              "Image Files (*.bmp, *.jpg, *.png, *hdr)");
           if (result) {
-            Capture(util::WideStringToU8String(result));
+            Capture(result);
           }
         }
         ImGui::EndMenu();
