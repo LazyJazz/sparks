@@ -23,6 +23,7 @@ bool Camera::ImGuiItems() {
                          ImGuiSliderFlags_Logarithmic);
   value_changed |= ImGui::SliderFloat("Clamp", &clamp_, 1.0f, 1000000.0f,
                                       "%.2f", ImGuiSliderFlags_Logarithmic);
+  ImGui::SliderFloat("Gamma", &gamma_, 0.1f, 10.0f);
   return value_changed;
 }
 
