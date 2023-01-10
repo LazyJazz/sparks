@@ -106,7 +106,7 @@ void App::OnInit() {
       VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
           VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 
-  core_->SetFrameSizeCallback([&](int width, int height) {
+  core_->SetFrameSizeCallback([this](int width, int height) {
     core_->GetDevice()->WaitIdle();
     gui_pause_ = !(width && height);
     if (gui_pause_) {
