@@ -2,11 +2,13 @@
 
 #include "ImGuizmo.h"
 #include "absl/strings/match.h"
+#include "absl/strings/str_split.h"
 #include "cmath"
 #include "glm/gtc/matrix_transform.hpp"
 #include "iostream"
 #include "sparks/util/util.h"
 #include "stb_image_write.h"
+#include "tinyfiledialogs.h"
 
 namespace sparks {
 
@@ -26,7 +28,9 @@ App::App(Renderer *renderer, const AppSettings &app_settings) {
 void App::Run() {
   OnInit();
   while (!glfwWindowShouldClose(core_->GetWindow())) {
-    OnLoop();
+    if (!gui_pause_) {
+      OnLoop();
+    }
     glfwPollEvents();
   }
   core_->GetDevice()->WaitIdle();
@@ -102,13 +106,18 @@ void App::OnInit() {
       VK_MEMORY_PROPERTY_HOST_COHERENT_BIT |
           VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT);
 
-  core_->SetFrameSizeCallback([this](int width, int height) {
+  core_->SetFrameSizeCallback([&](int width, int height) {
     core_->GetDevice()->WaitIdle();
+    gui_pause_ = !(width && height);
+    if (gui_pause_) {
+      return;
+    }
     screen_frame_->Resize(width, height);
     render_frame_->Resize(width, height);
     depth_buffer_->Resize(width, height);
     stencil_buffer_->Resize(width, height);
     preview_render_node_->BuildRenderNode(width, height);
+    preview_render_node_far_->BuildRenderNode(width, height);
     envmap_render_node_->BuildRenderNode(width, height);
     postproc_render_node_->BuildRenderNode(width, height);
     stencil_device_buffer_ = std::make_unique<vulkan::Buffer>(
@@ -145,29 +154,7 @@ void App::OnInit() {
     for (int i = 0; i < path_count; i++) {
       auto path = paths[i];
       LAND_INFO("Loading asset: {}", path);
-      if (absl::EndsWith(path, ".png") || absl::EndsWith(path, ".jpg") ||
-          absl::EndsWith(path, ".bmp") || absl::EndsWith(path, ".hdr") ||
-          absl::EndsWith(path, ".jpeg")) {
-        renderer_->LoadTexture(path);
-      } else if (absl::EndsWith(path, ".obj")) {
-        renderer_->LoadObjMesh(path);
-      } else if (absl::EndsWith(path, ".xml")) {
-        renderer_->LoadScene(path);
-        renderer_->ResetAccumulation();
-        num_loaded_device_textures_ = 0;
-        num_loaded_device_assets_ = 0;
-        device_texture_samplers_.clear();
-        entity_device_assets_.clear();
-        selected_entity_id_ = -1;
-        if (app_settings_.hardware_renderer) {
-          reset_accumulation_ = true;
-          top_level_acceleration_structure_.reset();
-          bottom_level_acceleration_structures_.clear();
-          object_info_data_.clear();
-          ray_tracing_vertex_data_.clear();
-          ray_tracing_index_data_.clear();
-        }
-      }
+      OpenFile(path);
     }
   });
 
@@ -376,7 +363,53 @@ void App::UpdateImGui() {
     ImGui::SetNextWindowBgAlpha(0.3);
     ImGui::Begin("Global Settings", &global_settings_window_open_,
                  ImGuiWindowFlags_NoMove | ImGuiWindowFlags_AlwaysAutoResize |
-                     ImGuiWindowFlags_NoResize);
+                     ImGuiWindowFlags_NoResize | ImGuiWindowFlags_MenuBar);
+    if (ImGui::BeginMenuBar()) {
+      if (ImGui::BeginMenu("File")) {
+        {
+          char *result{nullptr};
+          if (ImGui::MenuItem("Open Scene")) {
+            std::vector<const char *> file_types = {"*.xml"};
+            result = tinyfd_openFileDialog("Open Scene", "", file_types.size(),
+                                           file_types.data(),
+                                           "Scene files (*.xml)", 0);
+          }
+          if (ImGui::MenuItem("Import Image..")) {
+            std::vector<const char *> file_types = {"*.bmp", "*.png", "*.jpg",
+                                                    "*.hdr"};
+            result = tinyfd_openFileDialog(
+                "Import Image", "", file_types.size(), file_types.data(),
+                "Image Files (*.bmp, *.jpg, *.png, *hdr)", 1);
+          }
+          if (ImGui::MenuItem("Import Mesh..")) {
+            std::vector<const char *> file_types = {"*.obj"};
+            result = tinyfd_openFileDialog("Import Mesh", "", file_types.size(),
+                                           file_types.data(),
+                                           "Mesh Files (*.obj)", 1);
+          }
+          if (result) {
+            std::vector<std::string> file_paths = absl::StrSplit(result, "|");
+            for (auto &file_path : file_paths) {
+              OpenFile(file_path);
+            }
+          }
+        }
+        ImGui::Separator();
+        if (ImGui::MenuItem("Capture and Save..")) {
+          std::vector<const wchar_t *> file_types = {L"*.bmp", L"*.png",
+                                                     L"*.jpg", L"*.hdr"};
+          auto result = tinyfd_saveFileDialogW(
+              L"Save Captured Image", L"", file_types.size(), file_types.data(),
+              L"Image Files (*.bmp, *.jpg, *.png, *hdr)");
+          if (result) {
+            Capture(util::WideStringToU8String(result));
+          }
+        }
+        ImGui::EndMenu();
+      }
+      ImGui::EndMenuBar();
+    }
+
     ImGui::Text("Notice:");
     ImGui::Text("W/A/S/D/LCTRL/SPACE for camera movement.");
     ImGui::Text("Cursor drag on frame for camera rotation.");
@@ -408,7 +441,7 @@ void App::UpdateImGui() {
     }
 
     ImGui::SameLine();
-    if (ImGui::Button("Capture")) {
+    if (ImGui::Button("Quick Capture")) {
       auto tt = std::chrono::system_clock::to_time_t(
           std::chrono::system_clock::now());
 #ifdef _WIN32
@@ -616,6 +649,7 @@ void App::UpdateDynamicBuffer() {
   global_uniform_object.aperture = camera.GetAperture();
   global_uniform_object.focal_length = camera.GetFocalLength();
   global_uniform_object.clamp = camera.GetClamp();
+  global_uniform_object.gamma = camera.GetGamma();
   global_uniform_object.aspect = float(core_->GetFramebufferWidth()) /
                                  float(core_->GetFramebufferHeight());
 
@@ -1098,27 +1132,33 @@ void App::BuildRayTracingPipeline() {
 
 void App::Capture(const std::string &file_path) {
   LAND_INFO("Capture Saving... Path: [{}]", file_path);
-  auto write_buffer = [&file_path](glm::vec4 *buffer, int width, int height,
-                                   float scale) {
-    std::vector<uint8_t> buffer24bit(width * height * 3);
-    auto float2u8 = [](float v) {
-      return uint8_t(std::max(0, std::min(255, int(v * 255.0f))));
-    };
-    for (int i = 0; i < width * height; i++) {
-      buffer[i] *= scale;
-      buffer24bit[i * 3] = float2u8(pow(buffer[i].r, 1.0f / 2.2f));
-      buffer24bit[i * 3 + 1] = float2u8(pow(buffer[i].g, 1.0f / 2.2f));
-      buffer24bit[i * 3 + 2] = float2u8(pow(buffer[i].b, 1.0f / 2.2f));
-    }
-    if (absl::EndsWith(file_path, "png")) {
-      stbi_write_png(file_path.c_str(), width, height, 3, buffer24bit.data(),
-                     width * 3);
-    } else if (absl::EndsWith(file_path, "jpg") ||
-               absl::EndsWith(file_path, "jpeg")) {
-      stbi_write_jpg(file_path.c_str(), width, height, 3, buffer24bit.data(),
-                     100);
+  auto write_buffer = [&file_path, this](glm::vec4 *buffer, int width,
+                                         int height, float scale) {
+    if (absl::EndsWith(file_path, ".hdr")) {
+      stbi_write_hdr(file_path.c_str(), width, height, 4,
+                     reinterpret_cast<float *>(buffer));
     } else {
-      stbi_write_bmp(file_path.c_str(), width, height, 3, buffer24bit.data());
+      std::vector<uint8_t> buffer24bit(width * height * 3);
+      auto float2u8 = [](float v) {
+        return uint8_t(std::max(0, std::min(255, int(v * 255.0f))));
+      };
+      float inv_gamma = 1.0f / renderer_->GetScene().GetCamera().GetGamma();
+      for (int i = 0; i < width * height; i++) {
+        buffer[i] *= scale;
+        buffer24bit[i * 3] = float2u8(pow(buffer[i].r, inv_gamma));
+        buffer24bit[i * 3 + 1] = float2u8(pow(buffer[i].g, inv_gamma));
+        buffer24bit[i * 3 + 2] = float2u8(pow(buffer[i].b, inv_gamma));
+      }
+      if (absl::EndsWith(file_path, ".png")) {
+        stbi_write_png(file_path.c_str(), width, height, 3, buffer24bit.data(),
+                       width * 3);
+      } else if (absl::EndsWith(file_path, ".jpg") ||
+                 absl::EndsWith(file_path, ".jpeg")) {
+        stbi_write_jpg(file_path.c_str(), width, height, 3, buffer24bit.data(),
+                       100);
+      } else {
+        stbi_write_bmp(file_path.c_str(), width, height, 3, buffer24bit.data());
+      }
     }
   };
 
@@ -1143,6 +1183,32 @@ void App::Capture(const std::string &file_path) {
     auto captured_buffer = renderer_->CaptureRenderedImage();
     write_buffer(captured_buffer.data(), renderer_->GetWidth(),
                  renderer_->GetHeight(), 1.0f);
+  }
+}
+
+void App::OpenFile(const std::string &path) {
+  if (absl::EndsWith(path, ".png") || absl::EndsWith(path, ".jpg") ||
+      absl::EndsWith(path, ".bmp") || absl::EndsWith(path, ".hdr") ||
+      absl::EndsWith(path, ".jpeg")) {
+    renderer_->LoadTexture(path);
+  } else if (absl::EndsWith(path, ".obj")) {
+    renderer_->LoadObjMesh(path);
+  } else if (absl::EndsWith(path, ".xml")) {
+    renderer_->LoadScene(path);
+    renderer_->ResetAccumulation();
+    num_loaded_device_textures_ = 0;
+    num_loaded_device_assets_ = 0;
+    device_texture_samplers_.clear();
+    entity_device_assets_.clear();
+    selected_entity_id_ = -1;
+    if (app_settings_.hardware_renderer) {
+      reset_accumulation_ = true;
+      top_level_acceleration_structure_.reset();
+      bottom_level_acceleration_structures_.clear();
+      object_info_data_.clear();
+      ray_tracing_vertex_data_.clear();
+      ray_tracing_index_data_.clear();
+    }
   }
 }
 
