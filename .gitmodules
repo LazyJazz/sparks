@@ -13,6 +13,3 @@
 [submodule "external/tinyxml2"]
 	path = external/tinyxml2
 	url = https://github.com/leethomason/tinyxml2.git
-[submodule "external/tinyfiledialogs"]
-	path = external/tinyfiledialogs
-	url = https://github.com/LazyJazz/tinyfiledialogs.git

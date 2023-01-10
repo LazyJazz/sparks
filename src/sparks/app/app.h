@@ -21,7 +21,6 @@ class App {
   void OnRender();
   void OnClose();
 
-  void OpenFile(const std::string &file_path);
   void Capture(const std::string &file_path);
   void UpdateImGui();
   void UpdateDynamicBuffer();
@@ -110,6 +109,5 @@ class App {
   bool reset_accumulation_{true};
   bool rebuild_ray_tracing_pipeline_{false};
   uint32_t accumulated_sample_{0};
-  bool gui_pause_{false};
 };
 }  // namespace sparks
