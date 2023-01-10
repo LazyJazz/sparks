@@ -43,5 +43,5 @@ void main() {
       }
     }
   }
-  out_color = vec4(pow(vec3(out_color), vec3(1.0 / 2.2)), 1.0);
+  out_color = vec4(pow(vec3(out_color), vec3(1.0 / global_object.gamma)), 1.0);
 }
