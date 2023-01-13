@@ -45,6 +45,8 @@ class Scene {
   [[nodiscard]] const float &GetEnvmapOffset() const;
   glm::vec3 &GetCameraPosition();
   [[nodiscard]] const glm::vec3 &GetCameraPosition() const;
+  float &GetCameraSpeed();
+  [[nodiscard]] const float &GetCameraSpeed() const;
   glm::vec3 &GetCameraPitchYawRoll();
   [[nodiscard]] const glm::vec3 &GetCameraPitchYawRoll() const;
 
@@ -83,6 +85,7 @@ class Scene {
   glm::vec3 envmap_minor_color_{0.3f};
 
   glm::vec3 camera_position_{0.0f};
+  float camera_speed_{3.0f};
   glm::vec3 camera_pitch_yaw_roll_{0.0f, 0.0f, 0.0f};
   Camera camera_{};
 };
