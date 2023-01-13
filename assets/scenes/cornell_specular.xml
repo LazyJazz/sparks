@@ -7,6 +7,7 @@
             <up value="0.0 1.0 0.0"/>
         </transform>
         <fov value="40"/>
+        <speed value="100"/>
     </camera>
 
     <!--Light-->
