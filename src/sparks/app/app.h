@@ -105,6 +105,8 @@ class App {
   int hover_entity_id_{-1};
   int selected_entity_id_{-1};
   glm::vec4 hovering_pixel_color_{0.0f};
+  int cursor_x_{-1};
+  int cursor_y_{-1};
 
   bool output_render_result_{false};
   bool reset_accumulation_{true};

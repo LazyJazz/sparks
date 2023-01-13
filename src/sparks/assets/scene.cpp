@@ -100,6 +100,12 @@ glm::vec3 &Scene::GetCameraPosition() {
 const glm::vec3 &Scene::GetCameraPosition() const {
   return camera_position_;
 }
+float &Scene::GetCameraSpeed() {
+  return camera_speed_;
+}
+const float &Scene::GetCameraSpeed() const {
+  return camera_speed_;
+}
 glm::vec3 &Scene::GetCameraPitchYawRoll() {
   return camera_pitch_yaw_roll_;
 }
@@ -331,6 +337,11 @@ Scene::Scene(const std::string &filename) : Scene() {
       auto grandchild_element = child_element->FirstChildElement("fov");
       if (grandchild_element) {
         fov = std::stof(grandchild_element->FindAttribute("value")->Value());
+      }
+      grandchild_element = child_element->FirstChildElement("speed");
+      if (grandchild_element) {
+        camera_speed_ =
+            std::stof(grandchild_element->FindAttribute("value")->Value());
       }
       grandchild_element = child_element->FirstChildElement("aperture");
       if (grandchild_element) {
