@@ -1,5 +1,8 @@
 #ifndef HIT_RECORD_GLSL
 #define HIT_RECORD_GLSL
+
+#include "vertex.glsl"
+
 struct HitRecord {
   int hit_entity_id;
   vec3 position;

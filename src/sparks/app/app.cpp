@@ -465,8 +465,7 @@ void App::UpdateImGui() {
     reset_accumulation_ |= ImGui::SliderInt(
         "Bounces", &renderer_->GetRendererSettings().num_bounces, 1, 128);
     reset_accumulation_ |= ImGui::Checkbox(
-        "Enable MIS",
-        &renderer_->GetRendererSettings().enable_multiple_importance_sampling);
+        "Enable MIS", &renderer_->GetRendererSettings().enable_mis);
 
     scene.EntityCombo("Selected Entity", &selected_entity_id_);
 
@@ -621,6 +620,8 @@ void App::UpdateImGui() {
   }
 
   ImGui::Render();
+
+  rebuild_direct_lighting_assets_ |= reset_accumulation_;
 }
 
 void App::UpdateDynamicBuffer() {
@@ -650,7 +651,8 @@ void App::UpdateDynamicBuffer() {
   global_uniform_object.num_objects =
       renderer_->GetScene().GetEntities().size();
   global_uniform_object.enable_multiple_importance_sampling =
-      renderer_->GetRendererSettings().enable_multiple_importance_sampling;
+      renderer_->GetRendererSettings().enable_mis;
+  global_uniform_object.total_power = total_power_;
 
   auto &camera = renderer_->GetScene().GetCamera();
   global_uniform_object.fov = camera.GetFov();
@@ -1228,7 +1230,8 @@ void App::OpenFile(const std::string &path) {
 }
 
 void App::UpdateLightSourceSamplerInfo() {
-  if (rebuild_direct_lighting_assets_) {
+  if (rebuild_direct_lighting_assets_ &&
+      renderer_->GetRendererSettings().enable_mis) {
     std::vector<ObjectSamplerInfo> object_sampler_infos;
     std::vector<float> primitive_cdf;
     auto &entities = renderer_->GetScene().GetEntities();
@@ -1243,7 +1246,7 @@ void App::UpdateLightSourceSamplerInfo() {
       object_sampler_info.num_primitives = 0;
       object_sampler_info.primitive_offset = primitive_cdf.size();
       object_sampler_info.power = 0.0f;
-      if (mat.emission_strength > 1e-5f) {
+      if (mat.emission_strength > 1e-4f) {
         auto vertices = entity.GetModel()->GetVertices();
         auto indices = entity.GetModel()->GetIndices();
         object_sampler_info.num_primitives = indices.size() / 3;
@@ -1254,6 +1257,7 @@ void App::UpdateLightSourceSamplerInfo() {
             vertex.position = transform * glm::vec4{vertex.position, 1.0f};
           }
           auto total_area = 0.0f;
+          object_primitive_cdf.push_back(0.0f);
           for (int i = 0; i < object_sampler_info.num_primitives; i++) {
             auto v0 = vertices[indices[i * 3]];
             auto v1 = vertices[indices[i * 3 + 1]];
@@ -1264,11 +1268,12 @@ void App::UpdateLightSourceSamplerInfo() {
             total_area += area;
             object_primitive_cdf.push_back(total_area);
           }
-          object_sampler_info.power =
-              total_area * mat.emission_strength * 0.25f;
+          object_sampler_info.power = total_area * mat.emission_strength;
+          object_sampler_info.area = total_area;
           for (auto &cdf : object_primitive_cdf) {
             cdf /= total_area;
           }
+          object_primitive_cdf.push_back(1.0f);
           primitive_cdf.insert(primitive_cdf.end(),
                                object_primitive_cdf.begin(),
                                object_primitive_cdf.end());
@@ -1281,13 +1286,19 @@ void App::UpdateLightSourceSamplerInfo() {
 
     if (total_power > 0.0f) {
       for (auto &object_sampler_info : object_sampler_infos) {
+        object_sampler_info.pdf = object_sampler_info.power / total_power;
         object_sampler_info.cdf /= total_power;
+        if (object_sampler_info.area) {
+          object_sampler_info.sample_density =
+              object_sampler_info.pdf / object_sampler_info.area;
+        } else {
+          object_sampler_info.sample_density = 0.0;
+        }
       }
     }
 
-    if (object_sampler_infos.empty()) {
-      object_sampler_infos.emplace_back();
-    }
+    object_sampler_infos.emplace_back();
+    total_power_ = total_power;
 
     if (primitive_cdf.empty()) {
       primitive_cdf.emplace_back();
@@ -1303,7 +1314,7 @@ void App::UpdateLightSourceSamplerInfo() {
     primitive_cdf_buffer_->Upload(primitive_cdf.data());
 
     rebuild_direct_lighting_assets_ = false;
-    rebuild_render_nodes_ = true;
+    rebuild_ray_tracing_pipeline_ = true;
   }
 }
 

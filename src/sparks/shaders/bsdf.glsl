@@ -1,6 +1,9 @@
 #ifndef BSDF_GLSL
 #define BSDF_GLSL
 
+#include "hit_record.glsl"
+#include "random.glsl"
+
 #define Ng hit_record.geometry_normal
 #define N hit_record.normal
 #define V hit_record.omega_v
@@ -68,5 +71,11 @@ void SampleBSDF(out vec3 eval, out vec3 L, out float pdf) {
       return;
   }
 }
+
+#undef Ng
+#undef N
+#undef V
+#undef I
+#undef omega_in
 
 #endif
