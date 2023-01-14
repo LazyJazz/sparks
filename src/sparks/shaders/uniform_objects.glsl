@@ -1,4 +1,5 @@
-
+#ifndef UNIFORM_OBJECTS_GLSL
+#define UNIFORM_OBJECTS_GLSL
 struct GlobalUniformObject {
   mat4 projection;
   mat4 camera;
@@ -39,3 +40,5 @@ struct ObjectSamplerInfo {
   int num_primitives;
   float power;
 };
+
+#endif

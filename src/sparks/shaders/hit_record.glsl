@@ -1,3 +1,5 @@
+#ifndef HIT_RECORD_GLSL
+#define HIT_RECORD_GLSL
 struct HitRecord {
   int hit_entity_id;
   vec3 position;
@@ -74,3 +76,4 @@ HitRecord GetHitRecord(RayPayload ray_payload, vec3 origin, vec3 direction) {
 }
 
 HitRecord hit_record;
+#endif

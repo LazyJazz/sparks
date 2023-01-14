@@ -1,4 +1,5 @@
-
+#ifndef VERTEX_GLSL
+#define VERTEX_GLSL
 
 struct Vertex {
   vec3 position;
@@ -24,3 +25,5 @@ vec3 GetVertexPosition(uint index) {
   uint offset = index * 11;
   return vec3(vertices[offset + 0], vertices[offset + 1], vertices[offset + 2]);
 }
+
+#endif
