@@ -303,6 +303,9 @@ int Scene::LoadObjMesh(const std::string &file_path) {
 }
 
 Scene::Scene(const std::string &filename) : Scene() {
+  if (filename.empty()) {
+    return;
+  }
   auto doc = std::make_unique<tinyxml2::XMLDocument>();
   doc->LoadFile(filename.c_str());
   tinyxml2::XMLElement *rootElement = doc->RootElement();

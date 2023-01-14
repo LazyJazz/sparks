@@ -1,4 +1,3 @@
-
 struct RandomDevice {
   uint seed;
 } random_device;
@@ -47,4 +46,24 @@ vec3 RandomOnSphere() {
 
 vec3 RandomInSphere() {
   return RandomOnSphere() * pow(RandomFloat(), 0.3333333333333333333);
+}
+
+void MakeOrthonormals(const vec3 N, out vec3 a, out vec3 b) {
+  if (N.x != N.y || N.x != N.z)
+    a = vec3(N.z - N.y, N.x - N.z, N.y - N.x);
+  else
+    a = vec3(N.z - N.y, N.x + N.z, -N.y - N.x);
+
+  a = normalize(a);
+  b = cross(N, a);
+}
+
+void SampleCosHemisphere(const vec3 N, out vec3 omega_in, out float pdf) {
+  float r1 = RandomFloat() * PI * 2.0;
+  float r2 = RandomFloat();
+  vec3 T, B;
+  MakeOrthonormals(N, T, B);
+  omega_in = vec3(vec2(sin(r1), cos(r1)) * sqrt(1.0 - r2), sqrt(r2));
+  pdf = omega_in.z * INV_PI;
+  omega_in = mat3(T, B, N) * omega_in;
 }

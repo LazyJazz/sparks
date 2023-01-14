@@ -31,6 +31,12 @@ layout(binding = 8) readonly buffer index_array {
   uint indices[];
 };
 layout(binding = 9) uniform sampler2D[] texture_samplers;
+layout(binding = 10) readonly buffer object_sampler_info_array {
+  ObjectSamplerInfo object_sampler_infos[];
+};
+layout(binding = 11) readonly buffer primitive_cdf_buffer {
+  float primitive_cdf[];
+};
 
 layout(location = 0) rayPayloadEXT RayPayload ray_payload;
 
@@ -38,6 +44,8 @@ layout(location = 0) rayPayloadEXT RayPayload ray_payload;
 #include "vertex.glsl"
 #include "hit_record.glsl"
 #include "random.glsl"
+#include "bsdf.glsl"
+#include "direct_lighting.glsl"
 // clang-format on
 
 vec3 SampleEnvmap(vec3 direction) {
@@ -51,7 +59,6 @@ vec3 SampleEnvmap(vec3 direction) {
       .xyz;
 }
 
-HitRecord hit_record;
 void TraceRay(vec3 origin, vec3 direction) {
   float tmin = 1e-4 * length(origin);
   float tmax = 1e4;
@@ -70,35 +77,28 @@ void TraceRay(vec3 origin, vec3 direction) {
 vec3 SampleRay(vec3 origin, vec3 direction) {
   vec3 radiance = vec3(0.0);
   vec3 throughput = vec3(1.0);
+  float mis_scale = 1.0f;
   for (int b = 0; b < global_uniform_object.num_bounces; b++) {
     TraceRay(origin, direction);
 
     if (ray_payload.t == -1.0) {
-      radiance += throughput * SampleEnvmap(direction);
+      radiance += mis_scale * throughput * SampleEnvmap(direction);
       break;
-    } else {
-      if (hit_record.material_type == MATERIAL_TYPE_EMISSION) {
-        radiance +=
-            throughput * hit_record.emission * hit_record.emission_strength;
-        break;
-      } else if (hit_record.material_type == MATERIAL_TYPE_SPECULAR) {
-        vec3 omega_in =
-            2.0 * dot(hit_record.normal, -direction) * hit_record.normal +
-            direction;
-        throughput *= hit_record.base_color;
-        origin = origin + direction * ray_payload.t;
-        direction = omega_in;
-      } else {
-        vec3 omega_in = RandomOnSphere();
-        if (dot(omega_in, hit_record.normal) < 0.0) {
-          omega_in = -omega_in;
-        }
-        throughput *= dot(omega_in, hit_record.normal) * 2.0 * PI * INV_PI *
-                      hit_record.base_color;
-        origin = origin + direction * ray_payload.t;
-        direction = omega_in;
-      }
     }
+
+    radiance += throughput * hit_record.emission *
+                hit_record.emission_strength * mis_scale;
+
+    vec3 eval;
+    vec3 omega_in;
+    float pdf;
+    SampleBSDF(eval, omega_in, pdf);
+    if (pdf < 1e-5) {
+      break;
+    }
+    throughput *= eval / pdf;
+    origin = hit_record.position;
+    direction = omega_in;
 
     // Russian Roulette
     float rrp =

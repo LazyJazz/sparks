@@ -5,7 +5,9 @@
 
 namespace sparks {
 
-Renderer::Renderer(const RendererSettings &renderer_settings) {
+Renderer::Renderer(const std::string &scene_file_path,
+                   const RendererSettings &renderer_settings)
+    : scene_(scene_file_path) {
   renderer_settings_ = renderer_settings;
 }
 

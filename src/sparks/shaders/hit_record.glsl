@@ -6,6 +6,7 @@ struct HitRecord {
   vec3 tangent;
   vec2 tex_coord;
   bool front_face;
+  vec3 omega_v;
 
   vec3 base_color;
   vec3 emission;
@@ -16,6 +17,7 @@ struct HitRecord {
 
 HitRecord GetHitRecord(RayPayload ray_payload, vec3 origin, vec3 direction) {
   HitRecord hit_record;
+  hit_record.omega_v = -direction;
   ObjectInfo object_info = object_infos[ray_payload.object_id];
   Vertex v0 = GetVertex(
       object_info.vertex_offset +
@@ -70,3 +72,5 @@ HitRecord GetHitRecord(RayPayload ray_payload, vec3 origin, vec3 direction) {
 
   return hit_record;
 }
+
+HitRecord hit_record;

@@ -15,11 +15,14 @@ struct GlobalUniformObject {
   int accumulated_sample{0};
   int num_samples{0};
   int num_bounces{0};
+  int num_objects{0};
   float fov{glm::radians(60.0f)};
   float aperture{0.0f};
   float focal_length{3.0f};
   float clamp{100.0f};
   float gamma{2.2f};
   float aspect{1.0f};
+  float total_power{0.0f};
+  int enable_multiple_importance_sampling{true};
 };
 }  // namespace sparks
