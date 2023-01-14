@@ -194,10 +194,6 @@ void App::OnInit() {
       core_->GetDevice(), VK_FILTER_NEAREST, VK_SAMPLER_ADDRESS_MODE_REPEAT);
 
   ImGuizmo::Enable(true);
-  LAND_INFO("Updating device assets.");
-  UpdateDeviceAssets();
-  LAND_INFO("Building render nodes.");
-  RebuildRenderNode();
 }
 
 void App::OnLoop() {
@@ -236,11 +232,13 @@ void App::OnUpdate(uint32_t ms) {
   }
   if (app_settings_.hardware_renderer) {
     UpdateTopLevelAccelerationStructure();
+    UpdateLightSourceSamplerInfo();
   }
   if (rebuild_ray_tracing_pipeline_) {
     BuildRayTracingPipeline();
     rebuild_ray_tracing_pipeline_ = false;
   }
+  UpdateRenderNodes();
 }
 
 void App::OnRender() {
@@ -466,6 +464,9 @@ void App::UpdateImGui() {
     }
     reset_accumulation_ |= ImGui::SliderInt(
         "Bounces", &renderer_->GetRendererSettings().num_bounces, 1, 128);
+    reset_accumulation_ |= ImGui::Checkbox(
+        "Enable MIS",
+        &renderer_->GetRendererSettings().enable_multiple_importance_sampling);
 
     scene.EntityCombo("Selected Entity", &selected_entity_id_);
 
@@ -541,6 +542,7 @@ void App::UpdateImGui() {
                 ImGui::IsAnyItemHovered() ? "yes" : "no");
     ImGui::Text("Mouse Wheel: %f", io.MouseWheel);
     ImGui::Text("Mouse Wheel H: %f", io.MouseWheelH);
+    ImGui::Text("ImGuizmo Is Using: %s", ImGuizmo::IsUsing() ? "yes" : "no");
 #endif
 
     ImGui::End();
@@ -645,6 +647,10 @@ void App::UpdateDynamicBuffer() {
       renderer_->GetRendererSettings().num_samples;
   global_uniform_object.num_bounces =
       renderer_->GetRendererSettings().num_bounces;
+  global_uniform_object.num_objects =
+      renderer_->GetScene().GetEntities().size();
+  global_uniform_object.enable_multiple_importance_sampling =
+      renderer_->GetRendererSettings().enable_multiple_importance_sampling;
 
   auto &camera = renderer_->GetScene().GetCamera();
   global_uniform_object.fov = camera.GetFov();
@@ -790,7 +796,7 @@ void App::UpdateDeviceAssets() {
                           texture_image_buffer.get());
     }
     num_loaded_device_textures_ = int(textures.size());
-    RebuildRenderNode();
+    rebuild_render_nodes_ = true;
   }
 }
 
@@ -806,7 +812,7 @@ void App::HandleImGuiIO() {
   }
 }
 
-void App::RebuildRenderNode() {
+void App::RebuildRenderNodes() {
   std::vector<std::pair<vulkan::framework::TextureImage *, vulkan::Sampler *>>
       binding_texture_samplers_;
   for (auto &device_texture_sampler : device_texture_samplers_) {
@@ -1128,6 +1134,10 @@ void App::BuildRayTracingPipeline() {
                                              VK_SHADER_STAGE_RAYGEN_BIT_KHR);
   ray_tracing_render_node_->AddUniformBinding(binding_texture_samplers_,
                                               VK_SHADER_STAGE_RAYGEN_BIT_KHR);
+  ray_tracing_render_node_->AddBufferBinding(object_sampler_info_buffer_.get(),
+                                             VK_SHADER_STAGE_RAYGEN_BIT_KHR);
+  ray_tracing_render_node_->AddBufferBinding(primitive_cdf_buffer_.get(),
+                                             VK_SHADER_STAGE_RAYGEN_BIT_KHR);
   ray_tracing_render_node_->SetShaders("../../shaders/path_tracing.rgen.spv",
                                        "../../shaders/path_tracing.rmiss.spv",
                                        "../../shaders/path_tracing.rchit.spv");
@@ -1207,12 +1217,100 @@ void App::OpenFile(const std::string &path) {
     selected_entity_id_ = -1;
     if (app_settings_.hardware_renderer) {
       reset_accumulation_ = true;
+      rebuild_direct_lighting_assets_ = true;
       top_level_acceleration_structure_.reset();
       bottom_level_acceleration_structures_.clear();
       object_info_data_.clear();
       ray_tracing_vertex_data_.clear();
       ray_tracing_index_data_.clear();
     }
+  }
+}
+
+void App::UpdateLightSourceSamplerInfo() {
+  if (rebuild_direct_lighting_assets_) {
+    std::vector<ObjectSamplerInfo> object_sampler_infos;
+    std::vector<float> primitive_cdf;
+    auto &entities = renderer_->GetScene().GetEntities();
+
+    float total_power = 0.0f;
+    for (auto &entity : entities) {
+      ObjectSamplerInfo object_sampler_info{};
+
+      auto mat = entity.GetMaterial();
+      auto transform = entity.GetTransformMatrix();
+      object_sampler_info.local_to_world = transform;
+      object_sampler_info.num_primitives = 0;
+      object_sampler_info.primitive_offset = primitive_cdf.size();
+      object_sampler_info.power = 0.0f;
+      if (mat.emission_strength > 1e-5f) {
+        auto vertices = entity.GetModel()->GetVertices();
+        auto indices = entity.GetModel()->GetIndices();
+        object_sampler_info.num_primitives = indices.size() / 3;
+
+        if (object_sampler_info.num_primitives) {
+          std::vector<float> object_primitive_cdf;
+          for (auto &vertex : vertices) {
+            vertex.position = transform * glm::vec4{vertex.position, 1.0f};
+          }
+          auto total_area = 0.0f;
+          for (int i = 0; i < object_sampler_info.num_primitives; i++) {
+            auto v0 = vertices[indices[i * 3]];
+            auto v1 = vertices[indices[i * 3 + 1]];
+            auto v2 = vertices[indices[i * 3 + 2]];
+            auto area =
+                0.5f * glm::length(glm::cross(v1.position - v0.position,
+                                              v2.position - v0.position));
+            total_area += area;
+            object_primitive_cdf.push_back(total_area);
+          }
+          object_sampler_info.power =
+              total_area * mat.emission_strength * 0.25f;
+          for (auto &cdf : object_primitive_cdf) {
+            cdf /= total_area;
+          }
+          primitive_cdf.insert(primitive_cdf.end(),
+                               object_primitive_cdf.begin(),
+                               object_primitive_cdf.end());
+        }
+      }
+      total_power += object_sampler_info.power;
+      object_sampler_info.cdf = total_power;
+      object_sampler_infos.emplace_back(object_sampler_info);
+    }
+
+    if (total_power > 0.0f) {
+      for (auto &object_sampler_info : object_sampler_infos) {
+        object_sampler_info.cdf /= total_power;
+      }
+    }
+
+    if (object_sampler_infos.empty()) {
+      object_sampler_infos.emplace_back();
+    }
+
+    if (primitive_cdf.empty()) {
+      primitive_cdf.emplace_back();
+    }
+
+    object_sampler_info_buffer_ =
+        std::make_unique<vulkan::framework::StaticBuffer<ObjectSamplerInfo>>(
+            core_.get(), object_sampler_infos.size());
+    object_sampler_info_buffer_->Upload(object_sampler_infos.data());
+    primitive_cdf_buffer_ =
+        std::make_unique<vulkan::framework::StaticBuffer<float>>(
+            core_.get(), primitive_cdf.size());
+    primitive_cdf_buffer_->Upload(primitive_cdf.data());
+
+    rebuild_direct_lighting_assets_ = false;
+    rebuild_render_nodes_ = true;
+  }
+}
+
+void App::UpdateRenderNodes() {
+  if (rebuild_render_nodes_) {
+    RebuildRenderNodes();
+    rebuild_render_nodes_ = false;
   }
 }
 

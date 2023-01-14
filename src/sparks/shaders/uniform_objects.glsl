@@ -12,12 +12,15 @@ struct GlobalUniformObject {
   int accumulated_sample;
   int num_samples;
   int num_bounces;
+  int num_objects;
   float fov;
   float aperture;
   float focal_length;
   float clamp;
   float gamma;
   float aspect;
+  float total_power;
+  int enable_multiple_importance_sampling;
 };
 
 struct EntityUniformObject {
@@ -27,4 +30,12 @@ struct EntityUniformObject {
 struct ObjectInfo {
   uint vertex_offset;
   uint index_offset;
+};
+
+struct ObjectSamplerInfo {
+  mat4 local_to_world;
+  float cdf;
+  int primitive_offset;
+  int num_primitives;
+  float power;
 };

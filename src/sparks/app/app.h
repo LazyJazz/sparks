@@ -1,5 +1,6 @@
 #pragma once
 #include "grassland/grassland.h"
+#include "object_sampler_info.h"
 #include "sparks/app/app_settings.h"
 #include "sparks/app/entity_device_asset.h"
 #include "sparks/app/entity_uniform_object.h"
@@ -32,8 +33,10 @@ class App {
   void UpdateCamera();
   void UploadAccumulationResult();
   void UpdateTopLevelAccelerationStructure();
+  void UpdateLightSourceSamplerInfo();
+  void UpdateRenderNodes();
 
-  void RebuildRenderNode();
+  void RebuildRenderNodes();
   void BuildRayTracingPipeline();
 
   Renderer *renderer_{nullptr};
@@ -113,5 +116,12 @@ class App {
   bool rebuild_ray_tracing_pipeline_{false};
   uint32_t accumulated_sample_{0};
   bool gui_pause_{false};
+
+  bool rebuild_render_nodes_{true};
+  bool rebuild_direct_lighting_assets_{true};
+  std::unique_ptr<vulkan::framework::StaticBuffer<float>> primitive_cdf_buffer_;
+  std::unique_ptr<vulkan::framework::StaticBuffer<ObjectSamplerInfo>>
+      object_sampler_info_buffer_;
+  std::unique_ptr<vulkan::framework::StaticBuffer<float>> envmap_cdf_buffer_;
 };
 }  // namespace sparks

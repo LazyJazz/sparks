@@ -14,6 +14,10 @@ ABSL_FLAG(uint32_t, width, 1920, "Window width");
 ABSL_FLAG(uint32_t, height, 1080, "Window height");
 ABSL_FLAG(bool, vkrt, false, "Use Vulkan Ray Tracing pipeline");
 ABSL_FLAG(int, device, -1, "Select physical device manually");
+ABSL_FLAG(std::string,
+          scene,
+          "../../scenes/cornell.xml",
+          "Path to initial scene file");
 
 void RunApp(sparks::Renderer *renderer);
 
@@ -21,7 +25,7 @@ int main(int argc, char *argv[]) {
   absl::SetProgramUsageMessage("Usage");
   absl::ParseCommandLine(argc, argv);
   sparks::RendererSettings renderer_settings;
-  sparks::Renderer renderer(renderer_settings);
+  sparks::Renderer renderer(absl::GetFlag(FLAGS_scene), renderer_settings);
   RunApp(&renderer);
 }
 

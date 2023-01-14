@@ -18,8 +18,8 @@ class Scene;
 struct Material {
   glm::vec3 albedo_color{0.8f};
   int albedo_texture_id{0};
-  glm::vec3 emission{0.0f};
-  float emission_strength{1.0f};
+  glm::vec3 emission{1.0f};
+  float emission_strength{0.0f};
   float alpha{1.0f};
   MaterialType material_type{MATERIAL_TYPE_LAMBERTIAN};
   float reserve[2]{};

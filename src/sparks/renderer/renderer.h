@@ -12,7 +12,8 @@
 namespace sparks {
 class Renderer {
  public:
-  explicit Renderer(const RendererSettings &renderer_settings);
+  explicit Renderer(const std::string &scene_file_path,
+                    const RendererSettings &renderer_settings);
   Scene &GetScene();
   [[nodiscard]] const Scene &GetScene() const;
   RendererSettings &GetRendererSettings();
@@ -68,7 +69,7 @@ class Renderer {
   void WorkerThread();
 
   RendererSettings renderer_settings_;
-  Scene scene_{"../../scenes/base.xml"};
+  Scene scene_{};
 
   /* CPU Renderer Assets */
   std::vector<glm::vec4> accumulation_color_;
