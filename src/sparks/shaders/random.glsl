@@ -1,3 +1,5 @@
+#ifndef RANDOM_GLSL
+#define RANDOM_GLSL
 struct RandomDevice {
   uint seed;
 } random_device;
@@ -67,3 +69,4 @@ void SampleCosHemisphere(const vec3 N, out vec3 omega_in, out float pdf) {
   pdf = omega_in.z * INV_PI;
   omega_in = mat3(T, B, N) * omega_in;
 }
+#endif

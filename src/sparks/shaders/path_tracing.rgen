@@ -2,12 +2,12 @@
 #extension GL_GOOGLE_include_directive : require
 #extension GL_EXT_ray_tracing : enable
 #extension GL_EXT_nonuniform_qualifier : enable
-// clang-format off
+
+#include "constants.glsl"
+#include "material.glsl"
+#include "mis.glsl"
 #include "ray_payload.glsl"
 #include "uniform_objects.glsl"
-#include "material.glsl"
-#include "constants.glsl"
-// clang-format on
 
 layout(binding = 0) uniform accelerationStructureEXT scene;
 layout(binding = 1, rgba32f) uniform image2D accumulation_color;
@@ -40,13 +40,11 @@ layout(binding = 11) readonly buffer primitive_cdf_buffer {
 
 layout(location = 0) rayPayloadEXT RayPayload ray_payload;
 
-// clang-format off
-#include "vertex.glsl"
-#include "hit_record.glsl"
-#include "random.glsl"
 #include "bsdf.glsl"
 #include "direct_lighting.glsl"
-// clang-format on
+#include "hit_record.glsl"
+#include "random.glsl"
+#include "vertex.glsl"
 
 vec3 SampleEnvmap(vec3 direction) {
   float x = global_uniform_object.envmap_offset;
@@ -81,6 +79,11 @@ vec3 SampleRay(vec3 origin, vec3 direction) {
   for (int b = 0; b < global_uniform_object.num_bounces; b++) {
     TraceRay(origin, direction);
 
+    if (global_uniform_object.enable_mis && b != 0) {
+      float direct_lighting_pdf = EstimateDirectLightingPdf();
+      mis_scale = PowerHeuristic(mis_scale, direct_lighting_pdf);
+    }
+
     if (ray_payload.t == -1.0) {
       radiance += mis_scale * throughput * SampleEnvmap(direction);
       break;
@@ -92,13 +95,30 @@ vec3 SampleRay(vec3 origin, vec3 direction) {
     vec3 eval;
     vec3 omega_in;
     float pdf;
+
+    if (global_uniform_object.enable_mis) {
+      SampleDirectLighting(eval, omega_in, pdf);
+      if (pdf > 0.0) {
+        float bsdf_pdf;
+        vec3 bsdf_eval = EvalBSDF(omega_in, bsdf_pdf);
+        radiance +=
+            bsdf_eval * eval * throughput * PowerHeuristic(pdf, bsdf_pdf);
+      }
+    }
+
     SampleBSDF(eval, omega_in, pdf);
     if (pdf < 1e-5) {
       break;
     }
+
     throughput *= eval / pdf;
     origin = hit_record.position;
     direction = omega_in;
+
+    if (global_uniform_object.enable_mis) {
+      float direct_lighting_pdf = EvalDirectLighting(omega_in);
+      mis_scale = pdf;
+    }
 
     // Russian Roulette
     float rrp =

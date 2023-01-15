@@ -1,3 +1,5 @@
+#ifndef MATERIAL_GLSL
+#define MATERIAL_GLSL
 
 struct Material {
   vec3 albedo_color;
@@ -13,3 +15,5 @@ struct Material {
 #define MATERIAL_TYPE_TRANSMISSIVE 2
 #define MATERIAL_TYPE_PRINCIPLED 3
 #define MATERIAL_TYPE_EMISSION 4
+
+#endif

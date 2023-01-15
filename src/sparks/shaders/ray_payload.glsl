@@ -1,3 +1,5 @@
+#ifndef RAY_PAYLOAD_GLSL
+#define RAY_PAYLOAD_GLSL
 
 struct RayPayload {
   mat4x3 object_to_world;
@@ -6,3 +8,5 @@ struct RayPayload {
   uint object_id;
   uint primitive_id;
 };
+
+#endif

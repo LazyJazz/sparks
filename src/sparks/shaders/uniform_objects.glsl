@@ -1,4 +1,5 @@
-
+#ifndef UNIFORM_OBJECTS_GLSL
+#define UNIFORM_OBJECTS_GLSL
 struct GlobalUniformObject {
   mat4 projection;
   mat4 camera;
@@ -20,7 +21,7 @@ struct GlobalUniformObject {
   float gamma;
   float aspect;
   float total_power;
-  int enable_multiple_importance_sampling;
+  bool enable_mis;
 };
 
 struct EntityUniformObject {
@@ -33,9 +34,15 @@ struct ObjectInfo {
 };
 
 struct ObjectSamplerInfo {
-  mat4 local_to_world;
+  mat4 object_to_world;
   float cdf;
+  float pdf;
   int primitive_offset;
   int num_primitives;
   float power;
+  float area;
+  float sample_density;
+  float reserve;
 };
+
+#endif
