@@ -23,6 +23,7 @@ struct GlobalUniformObject {
   float gamma{2.2f};
   float aspect{1.0f};
   float total_power{0.0f};
-  int enable_multiple_importance_sampling{true};
+  float total_envmap_power{0.0f};
+  int enable_mis{true};
 };
 }  // namespace sparks

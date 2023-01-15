@@ -152,7 +152,6 @@ void Scene::UpdateEnvmapConfiguration() {
       auto major_color = color - minor_color;
       envmap_major_color_ += major_color * (scale * inv_width);
       envmap_minor_color_ += minor_color * (scale * inv_width);
-      color *= scale;
 
       auto strength = std::max(color.x, std::max(color.y, color.z));
       if (strength > major_strength) {
@@ -160,16 +159,18 @@ void Scene::UpdateEnvmapConfiguration() {
                                    -sin_theta * cos_phi};
         major_strength = strength;
       }
-
-      total_weight += strength * scale;
+      total_weight += strength * inv_width * scale;
       envmap_cdf_[i] = total_weight;
     }
   }
+
+  envmap_total_power_ = total_weight;
 
   auto inv_total_weight = 1.0f / total_weight;
   for (auto &v : envmap_cdf_) {
     v *= inv_total_weight;
   }
+  envmap_cdf_.push_back(1.0f);
 }
 glm::vec3 Scene::GetEnvmapLightDirection() const {
   float sin_offset = std::sin(envmap_offset_);

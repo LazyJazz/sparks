@@ -193,6 +193,13 @@ void App::OnInit() {
   nearest_sampler_ = std::make_unique<vulkan::Sampler>(
       core_->GetDevice(), VK_FILTER_NEAREST, VK_SAMPLER_ADDRESS_MODE_REPEAT);
 
+  primitive_cdf_buffer_ =
+      std::make_unique<vulkan::framework::StaticBuffer<float>>(core_.get(), 1);
+  object_sampler_info_buffer_ =
+      std::make_unique<vulkan::framework::StaticBuffer<ObjectSamplerInfo>>(
+          core_.get(), 1);
+  envmap_cdf_buffer_ =
+      std::make_unique<vulkan::framework::StaticBuffer<float>>(core_.get(), 1);
   ImGuizmo::Enable(true);
 }
 
@@ -207,14 +214,13 @@ void App::OnLoop() {
 }
 
 void App::OnUpdate(uint32_t ms) {
+  UpdateImGui();
   if (envmap_require_configure_) {
     renderer_->SafeOperation<void>([&]() {
       renderer_->GetScene().UpdateEnvmapConfiguration();
-      renderer_->ResetAccumulation();
       envmap_require_configure_ = false;
     });
   }
-  UpdateImGui();
   UpdateDynamicBuffer();
   UpdateHostStencilBuffer();
   UpdateDeviceAssets();
@@ -650,9 +656,11 @@ void App::UpdateDynamicBuffer() {
       renderer_->GetRendererSettings().num_bounces;
   global_uniform_object.num_objects =
       renderer_->GetScene().GetEntities().size();
-  global_uniform_object.enable_multiple_importance_sampling =
+  global_uniform_object.enable_mis =
       renderer_->GetRendererSettings().enable_mis;
   global_uniform_object.total_power = total_power_;
+  global_uniform_object.total_envmap_power =
+      renderer_->GetScene().GetEnvmapTotalPower();
 
   auto &camera = renderer_->GetScene().GetCamera();
   global_uniform_object.fov = camera.GetFov();
@@ -1140,6 +1148,8 @@ void App::BuildRayTracingPipeline() {
                                              VK_SHADER_STAGE_RAYGEN_BIT_KHR);
   ray_tracing_render_node_->AddBufferBinding(primitive_cdf_buffer_.get(),
                                              VK_SHADER_STAGE_RAYGEN_BIT_KHR);
+  ray_tracing_render_node_->AddBufferBinding(envmap_cdf_buffer_.get(),
+                                             VK_SHADER_STAGE_RAYGEN_BIT_KHR);
   ray_tracing_render_node_->SetShaders("../../shaders/path_tracing.rgen.spv",
                                        "../../shaders/path_tracing.rmiss.spv",
                                        "../../shaders/path_tracing.rchit.spv");
@@ -1304,17 +1314,20 @@ void App::UpdateLightSourceSamplerInfo() {
       primitive_cdf.emplace_back();
     }
 
-    object_sampler_info_buffer_ =
-        std::make_unique<vulkan::framework::StaticBuffer<ObjectSamplerInfo>>(
-            core_.get(), object_sampler_infos.size());
+    object_sampler_info_buffer_->Resize(object_sampler_infos.size());
     object_sampler_info_buffer_->Upload(object_sampler_infos.data());
-    primitive_cdf_buffer_ =
-        std::make_unique<vulkan::framework::StaticBuffer<float>>(
-            core_.get(), primitive_cdf.size());
+    primitive_cdf_buffer_->Resize(primitive_cdf.size());
     primitive_cdf_buffer_->Upload(primitive_cdf.data());
+    envmap_cdf_buffer_->Resize(renderer_->GetScene().GetEnvmapCdf().size());
+    envmap_cdf_buffer_->Upload(renderer_->GetScene().GetEnvmapCdf().data());
+
+    if (ray_tracing_render_node_) {
+      ray_tracing_render_node_->UpdateDescriptorSetBinding(10);
+      ray_tracing_render_node_->UpdateDescriptorSetBinding(11);
+      ray_tracing_render_node_->UpdateDescriptorSetBinding(12);
+    }
 
     rebuild_direct_lighting_assets_ = false;
-    rebuild_ray_tracing_pipeline_ = true;
   }
 }
 
