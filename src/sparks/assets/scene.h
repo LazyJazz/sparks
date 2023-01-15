@@ -57,7 +57,10 @@ class Scene {
   [[nodiscard]] const glm::vec3 &GetEnvmapMinorColor() const;
   [[nodiscard]] const glm::vec3 &GetEnvmapMajorColor() const;
   [[nodiscard]] const std::vector<float> &GetEnvmapCdf() const;
-  ;
+  [[nodiscard]] float GetEnvmapTotalPower() const {
+    return envmap_total_power_;
+  }
+
   [[nodiscard]] glm::vec4 SampleEnvmap(const glm::vec3 &direction) const;
 
   float TraceRay(const glm::vec3 &origin,
@@ -83,6 +86,7 @@ class Scene {
   glm::vec3 envmap_light_direction_{0.0f, 1.0f, 0.0f};
   glm::vec3 envmap_major_color_{0.5f};
   glm::vec3 envmap_minor_color_{0.3f};
+  float envmap_total_power_{0.0f};
 
   glm::vec3 camera_position_{0.0f};
   float camera_speed_{3.0f};

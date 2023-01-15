@@ -21,6 +21,7 @@ struct GlobalUniformObject {
   float gamma;
   float aspect;
   float total_power;
+  float total_envmap_power;
   bool enable_mis;
 };
 
