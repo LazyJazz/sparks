@@ -4,6 +4,28 @@
 struct Material {
   vec3 albedo_color;
   int albedo_texture_id;
+
+  vec3 subsurface_color;
+  float subsurface;
+
+  vec3 subsurface_radius;
+  float metallic;
+
+  float specular;
+  float specular_tint;
+  float roughness;
+  float anisotropic;
+
+  float anisotropic_rotation;
+  float sheen;
+  float sheen_tint;
+  float clearcoat;
+
+  float clearcoat_roughness;
+  float ior;
+  float transmission;
+  float transmission_roughness;
+
   vec3 emission;
   float emission_strength;
   float alpha;

@@ -18,8 +18,31 @@ class Scene;
 struct Material {
   glm::vec3 albedo_color{0.8f};
   int albedo_texture_id{0};
+
+  glm::vec3 subsurface_color{};
+  float subsurface{0.0f};
+
+  glm::vec3 subsurface_radius{1.0f, 0.2f, 0.1f};
+  float metallic{0.0f};
+
+  float specular{0.5f};
+  float specular_tint{0.0f};
+  float roughness{0.5f};
+  float anisotropic{0.0f};
+
+  float anisotropic_rotation{0.0f};
+  float sheen{0.0f};
+  float sheen_tint{0.0f};
+  float clearcoat{0.0f};
+
+  float clearcoat_roughness{0.03f};
+  float ior{1.45f};
+  float transmission{0.0f};
+  float transmission_roughness{0.0f};
+
   glm::vec3 emission{1.0f};
   float emission_strength{0.0f};
+
   float alpha{1.0f};
   MaterialType material_type{MATERIAL_TYPE_LAMBERTIAN};
   int normal_map_id{-1};
