@@ -28,6 +28,7 @@ class Mesh : public Model {
   static bool LoadObjFile(const std::string &obj_file_path, Mesh &mesh);
   void WriteObjFile(const std::string &file_path) const;
   void MergeVertices();
+  void BuildTangent();
 
  protected:
   std::vector<Vertex> vertices_;

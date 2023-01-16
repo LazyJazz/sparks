@@ -6,10 +6,11 @@ struct Vertex {
   vec3 normal;
   vec3 tangent;
   vec2 tex_coord;
+  float signal;
 };
 
 Vertex GetVertex(uint index) {
-  uint offset = index * 11;
+  uint offset = index * 12;
   Vertex vertex;
   vertex.position =
       vec3(vertices[offset + 0], vertices[offset + 1], vertices[offset + 2]);
@@ -18,11 +19,12 @@ Vertex GetVertex(uint index) {
   vertex.tangent =
       vec3(vertices[offset + 6], vertices[offset + 7], vertices[offset + 8]);
   vertex.tex_coord = vec2(vertices[offset + 9], vertices[offset + 10]);
+  vertex.signal = vertices[offset + 11];
   return vertex;
 }
 
 vec3 GetVertexPosition(uint index) {
-  uint offset = index * 11;
+  uint offset = index * 12;
   return vec3(vertices[offset + 0], vertices[offset + 1], vertices[offset + 2]);
 }
 

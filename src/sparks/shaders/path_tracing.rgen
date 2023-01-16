@@ -57,7 +57,6 @@ vec3 SampleRay(vec3 origin, vec3 direction) {
   float mis_scale = 1.0;
   for (int b = 0; b < global_uniform_object.num_bounces; b++) {
     TraceRay(origin, direction);
-    hit_record = GetHitRecord(ray_payload, origin, direction);
 
     if (global_uniform_object.enable_mis && b != 0) {
       float direct_lighting_pdf = EstimateDirectLightingPdf();
@@ -67,6 +66,24 @@ vec3 SampleRay(vec3 origin, vec3 direction) {
     if (ray_payload.t == -1.0) {
       radiance += mis_scale * throughput * SampleEnvmap(direction);
       break;
+    }
+
+    Material m = materials[ray_payload.object_id];
+
+    hit_record = GetHitRecord(ray_payload, origin, direction);
+
+    if (global_uniform_object.output_selection == 1) {
+      return (hit_record.normal + 1.0) * 0.5;
+    } else if (global_uniform_object.output_selection == 2) {
+      return (hit_record.tangent + 1.0) * 0.5;
+    } else if (global_uniform_object.output_selection == 3) {
+      return (hit_record.bitangent + 1.0) * 0.5;
+    } else if (global_uniform_object.output_selection == 4) {
+      return (hit_record.shading_normal + 1.0) * 0.5;
+    } else if (global_uniform_object.output_selection == 5) {
+      return (hit_record.geometry_normal + 1.0) * 0.5;
+    } else if (global_uniform_object.output_selection == 6) {
+      return hit_record.front_face ? vec3(1, 0, 0) : vec3(0, 0, 1);
     }
 
     radiance += throughput * hit_record.emission *

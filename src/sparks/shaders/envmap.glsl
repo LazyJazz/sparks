@@ -1,5 +1,6 @@
 #ifndef ENVMAP_GLSL
 #define ENVMAP_GLSL
+#include "sample_texture.glsl"
 
 vec2 DirectionToEnvmapCoord(vec3 direction) {
   float x = global_uniform_object.envmap_offset;
@@ -21,7 +22,8 @@ vec3 EnvmapCoordToDirection(vec2 envmap_tex_coord) {
 }
 
 vec3 SampleEnvmapTexCoord(vec2 tex_coord) {
-  return texture(texture_samplers[global_uniform_object.envmap_id], tex_coord)
+  return SampleTexture(global_uniform_object.envmap_id,
+                       tex_coord * vec2(1, -1) + vec2(0, 1))
       .xyz;
 }
 

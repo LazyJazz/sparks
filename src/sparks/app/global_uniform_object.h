@@ -25,5 +25,7 @@ struct GlobalUniformObject {
   float total_power{0.0f};
   float total_envmap_power{0.0f};
   int enable_mis{true};
+  int output_selection{0};
+  int reserve{};
 };
 }  // namespace sparks
