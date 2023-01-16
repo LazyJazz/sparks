@@ -475,6 +475,13 @@ void App::UpdateImGui() {
 
     scene.EntityCombo("Selected Entity", &selected_entity_id_);
 
+    std::vector<const char *> output_type = {
+        "Color",     "Normal",         "Tangent",
+        "Bitangent", "Shading Normal", "Geometry Normal"};
+    reset_accumulation_ |= ImGui::Combo(
+        "Output Channel", reinterpret_cast<int *>(&output_selection_),
+        output_type.data(), output_type.size());
+
     ImGui::NewLine();
     ImGui::Text("Camera");
     ImGui::Separator();
@@ -523,6 +530,16 @@ void App::UpdateImGui() {
                              0.0f, 1e5f, "%.3f", ImGuiSliderFlags_Logarithmic);
       reset_accumulation_ |=
           ImGui::SliderFloat("Alpha", &material.alpha, 0.0f, 1.0f, "%.3f");
+      reset_accumulation_ |=
+          scene.TextureCombo("Normal Map", &material.normal_map_id);
+      if (ImGui::Button("Remove Normal Map")) {
+        material.normal_map_id = -1;
+        reset_accumulation_ = true;
+      }
+      if (material.normal_map_id != -1) {
+        reset_accumulation_ |= ImGui::SliderFloat(
+            "Normal Intensity", &material.normal_map_intensity, 0.0f, 10.0f);
+      }
     }
 
 #if !defined(NDEBUG)
@@ -611,6 +628,10 @@ void App::UpdateImGui() {
     ImGui::Text("Cursor Position: (%d, %d)", cursor_x_, cursor_y_);
     ImGui::Text("R:%f G:%f B:%f", hovering_pixel_color_.x,
                 hovering_pixel_color_.y, hovering_pixel_color_.z);
+    ImGui::Text("HEX(%08x, %08x, %08x)",
+                glm::floatBitsToInt(hovering_pixel_color_.x),
+                glm::floatBitsToInt(hovering_pixel_color_.y),
+                glm::floatBitsToInt(hovering_pixel_color_.z));
     if (app_settings_.hardware_renderer) {
       ImGui::Text("Frame Duration: %.3lf ms", duration_us * 0.001f);
       ImGui::Text("Fps: %.2lf", 1.0f / (duration_us * 1e-6f));
@@ -661,6 +682,7 @@ void App::UpdateDynamicBuffer() {
   global_uniform_object.total_power = total_power_;
   global_uniform_object.total_envmap_power =
       renderer_->GetScene().GetEnvmapTotalPower();
+  global_uniform_object.output_selection = output_selection_;
 
   auto &camera = renderer_->GetScene().GetCamera();
   global_uniform_object.fov = camera.GetFov();
@@ -856,7 +878,8 @@ void App::RebuildRenderNodes() {
           VK_BLEND_OP_ADD, VK_COLOR_COMPONENT_R_BIT});
   preview_render_node_->VertexInput(
       {VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT,
-       VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32_SFLOAT});
+       VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32_SFLOAT,
+       VK_FORMAT_R32_SFLOAT});
   preview_render_node_->BuildRenderNode(core_->GetFramebufferWidth(),
                                         core_->GetFramebufferHeight());
 
@@ -887,7 +910,8 @@ void App::RebuildRenderNodes() {
           VK_BLEND_OP_ADD, VK_COLOR_COMPONENT_R_BIT});
   preview_render_node_far_->VertexInput(
       {VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32B32_SFLOAT,
-       VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32_SFLOAT});
+       VK_FORMAT_R32G32B32_SFLOAT, VK_FORMAT_R32G32_SFLOAT,
+       VK_FORMAT_R32_SFLOAT});
   preview_render_node_far_->BuildRenderNode(core_->GetFramebufferWidth(),
                                             core_->GetFramebufferHeight());
 

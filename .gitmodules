@@ -16,3 +16,6 @@
 [submodule "external/tinyfiledialogs"]
 	path = external/tinyfiledialogs
 	url = https://github.com/LazyJazz/tinyfiledialogs.git
+[submodule "external/MikkTSpace"]
+	path = external/MikkTSpace
+	url = https://github.com/mmikk/MikkTSpace.git

@@ -20,6 +20,8 @@ layout(binding = 2) readonly buffer material_uniform_object {
 };
 layout(binding = 3) uniform sampler2D[] texture_samplers;
 
+#include "sample_texture.glsl"
+
 void main() {
   Material material = materials[instance_id];
   vec3 light = global_object.envmap_minor_color;
@@ -31,10 +33,8 @@ void main() {
   if (material.material_type == MATERIAL_TYPE_EMISSION) {
     color_out = vec4(material.emission_strength * material.emission, 1.0);
   } else {
-    color_out =
-        vec4(material.albedo_color * light, 1.0) *
-        texture(texture_samplers[nonuniformEXT(material.albedo_texture_id)],
-                tex_coord);
+    color_out = vec4(material.albedo_color * light, 1.0) *
+                SampleTexture(material.albedo_texture_id, tex_coord);
   }
   instance_out = uvec4(instance_id);
 }

@@ -124,5 +124,6 @@ class App {
       object_sampler_info_buffer_;
   std::unique_ptr<vulkan::framework::StaticBuffer<float>> envmap_cdf_buffer_;
   float total_power_{0.0f};
+  int output_selection_{0};
 };
 }  // namespace sparks

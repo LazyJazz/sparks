@@ -8,6 +8,8 @@ struct Material {
   float emission_strength;
   float alpha;
   uint material_type;
+  int normal_map_id;
+  float normal_map_intensity;
 };
 
 #define MATERIAL_TYPE_LAMBERTIAN 0

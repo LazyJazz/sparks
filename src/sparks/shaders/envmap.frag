@@ -13,16 +13,7 @@ layout(binding = 1) uniform sampler2D[] texture_samplers;
 layout(location = 0) in vec2 tex_coord;
 layout(location = 0) out vec4 color_out;
 
-vec3 SampleEnvmap(vec3 direction) {
-  float x = global_uniform_object.envmap_offset;
-  float y = acos(direction.y) * INV_PI;
-  if (length(vec2(direction.x, direction.y)) > 1e-4) {
-    x += atan(direction.x, -direction.z);
-  }
-  x *= INV_PI * 0.5;
-  return texture(texture_samplers[global_uniform_object.envmap_id], vec2(x, y))
-      .xyz;
-}
+#include "envmap.glsl"
 
 void main() {
   mat4 camera_to_world = inverse(global_uniform_object.camera);

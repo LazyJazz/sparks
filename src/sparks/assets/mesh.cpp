@@ -6,17 +6,20 @@
 #include "unordered_map"
 
 #define TINYOBJLOADER_IMPLEMENTATION
+#include "mikktspace.h"
 #include "tiny_obj_loader.h"
 
 namespace sparks {
 
 Mesh::Mesh(const Mesh &mesh) : Mesh(mesh.vertices_, mesh.indices_) {
+  BuildTangent();
 }
 
 Mesh::Mesh(const std::vector<Vertex> &vertices,
            const std::vector<uint32_t> &indices) {
   vertices_ = vertices;
   indices_ = indices;
+  BuildTangent();
 }
 
 Mesh Mesh::Cube(const glm::vec3 &center, const glm::vec3 &size) {
@@ -365,8 +368,87 @@ Mesh::Mesh(const tinyxml2::XMLElement *element) {
       indices_.push_back(i + 1);
       indices_.push_back(i + 2);
     }
-    MergeVertices();
   }
+  BuildTangent();
+}
+
+void Mesh::BuildTangent() {
+  std::vector<Vertex> vertices(indices_.size());
+  for (int i = 0; i < indices_.size(); i++) {
+    vertices[i] = vertices_[indices_[i]];
+    indices_[i] = i;
+  }
+  vertices_ = vertices;
+
+  SMikkTSpaceInterface interface {};
+
+  interface.m_getNumFaces = [](const SMikkTSpaceContext *context) {
+    auto mesh = reinterpret_cast<Mesh *>(context->m_pUserData);
+    return int(mesh->indices_.size() / 3);
+  };
+
+  interface.m_getNumVerticesOfFace = [](const SMikkTSpaceContext *context,
+                                        const int i_face) { return 3; };
+
+  interface.m_getNormal = [](const SMikkTSpaceContext *context,
+                             float normal_out[], const int i_face,
+                             const int i_vert) {
+    auto mesh = reinterpret_cast<Mesh *>(context->m_pUserData);
+    auto normal = mesh->vertices_[mesh->indices_[i_face * 3 + i_vert]].normal;
+    normal_out[0] = normal.x;
+    normal_out[1] = normal.y;
+    normal_out[2] = normal.z;
+  };
+
+  interface.m_getPosition = [](const SMikkTSpaceContext *context,
+                               float position_out[], const int i_face,
+                               const int i_vert) {
+    auto mesh = reinterpret_cast<Mesh *>(context->m_pUserData);
+    auto position =
+        mesh->vertices_[mesh->indices_[i_face * 3 + i_vert]].position;
+    position_out[0] = position.x;
+    position_out[1] = position.y;
+    position_out[2] = position.z;
+  };
+
+  interface.m_getTexCoord = [](const SMikkTSpaceContext *context,
+                               float texcoord_out[], const int i_face,
+                               const int i_vert) {
+    auto mesh = reinterpret_cast<Mesh *>(context->m_pUserData);
+    auto tex_coord =
+        mesh->vertices_[mesh->indices_[i_face * 3 + i_vert]].tex_coord;
+    texcoord_out[0] = tex_coord.x;
+    texcoord_out[1] = tex_coord.y;
+  };
+
+  interface.m_setTSpaceBasic = [](const SMikkTSpaceContext *context,
+                                  const float tangent[], const float sign,
+                                  const int i_face, const int i_vert) {
+    auto mesh = reinterpret_cast<Mesh *>(context->m_pUserData);
+    auto &vert = mesh->vertices_[i_face * 3 + i_vert];
+    vert.tangent = glm::vec3{tangent[0], tangent[1], tangent[2]};
+    vert.signal = sign;
+  };
+
+  SMikkTSpaceContext context{};
+  context.m_pInterface = &interface;
+  context.m_pUserData = reinterpret_cast<void *>(this);
+
+  if (!genTangSpaceDefault(&context)) {
+    LAND_WARN("Build MikkTSpace failed.");
+  }
+
+  for (auto &vertex : vertices_) {
+    if (std::abs(glm::dot(vertex.normal, vertex.tangent)) > 1e-4f) {
+      vertex.tangent = glm::cross(vertex.normal, glm::vec3{1.0f, 0.0f, 0.0f});
+      if (glm::length(vertex.tangent) < 1e-4f) {
+        vertex.tangent = glm::cross(vertex.normal, glm::vec3{0.0f, 1.0f, 0.0f});
+      }
+      vertex.tangent = glm::normalize(vertex.tangent);
+    }
+  }
+
+  MergeVertices();
 }
 
 }  // namespace sparks

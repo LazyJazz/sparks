@@ -7,6 +7,7 @@ layout(location = 0) in vec3 position;
 layout(location = 1) in vec3 normal;
 layout(location = 2) in vec3 tangent;
 layout(location = 3) in vec2 tex_coord;
+layout(location = 4) in float signal;
 
 layout(location = 0) out int instance_id;
 layout(location = 1) out vec3 frag_position;
