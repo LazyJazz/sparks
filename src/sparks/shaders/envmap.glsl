@@ -22,7 +22,9 @@ vec3 EnvmapCoordToDirection(vec2 envmap_tex_coord) {
 }
 
 vec3 SampleEnvmapTexCoord(vec2 tex_coord) {
-  return SampleTexture(global_uniform_object.envmap_id, tex_coord).xyz;
+  return SampleTexture(global_uniform_object.envmap_id,
+                       tex_coord * vec2(1, -1) + vec2(0, 1))
+      .xyz;
 }
 
 vec3 SampleEnvmap(vec3 direction) {

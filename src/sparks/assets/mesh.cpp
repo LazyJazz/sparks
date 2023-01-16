@@ -45,20 +45,20 @@ Mesh Mesh::Sphere(const glm::vec3 &center, float radius) {
     for (int j = 0; j <= 2 * precision; j++) {
       auto normal = glm::vec3{circle[j].x * sin_theta, cos_theta,
                               circle[j].y * sin_theta};
-      vertices.push_back(
-          Vertex(normal * radius + center, normal,
-                 {float(j) * inv_precision * 0.5f, float(i) * inv_precision}));
+      vertices.push_back(Vertex(
+          normal * radius + center, normal,
+          {float(j) * inv_precision * 0.5f, 1.0f - float(i) * inv_precision}));
       if (i) {
         int j1 = j + 1;
         if (j == 2 * precision) {
           j1 = 0;
         }
         indices.push_back(i * (2 * precision + 1) + j1);
+        indices.push_back(i_1 * (2 * precision + 1) + j);
         indices.push_back(i * (2 * precision + 1) + j);
-        indices.push_back(i_1 * (2 * precision + 1) + j);
         indices.push_back(i * (2 * precision + 1) + j1);
-        indices.push_back(i_1 * (2 * precision + 1) + j);
         indices.push_back(i_1 * (2 * precision + 1) + j1);
+        indices.push_back(i_1 * (2 * precision + 1) + j);
       }
     }
   }
@@ -234,7 +234,7 @@ bool Mesh::LoadObjFile(const std::string &obj_file_path, Mesh &mesh) {
         Vertex v1 = face_vertices[i];
         Vertex v2 = face_vertices[i + 1];
         auto geometry_normal = glm::normalize(
-            glm::cross(v2.position - v0.position, v1.position - v0.position));
+            glm::cross(v1.position - v0.position, v2.position - v0.position));
         if (v0.normal == glm::vec3{0.0f, 0.0f, 0.0f}) {
           v0.normal = geometry_normal;
         } else if (glm::dot(geometry_normal, v0.normal) < 0.0f) {
@@ -373,6 +373,8 @@ Mesh::Mesh(const tinyxml2::XMLElement *element) {
 }
 
 void Mesh::BuildTangent() {
+  LAND_INFO("Building tangent.");
+
   std::vector<Vertex> vertices(indices_.size());
   for (int i = 0; i < indices_.size(); i++) {
     vertices[i] = vertices_[indices_[i]];

@@ -476,8 +476,8 @@ void App::UpdateImGui() {
     scene.EntityCombo("Selected Entity", &selected_entity_id_);
 
     std::vector<const char *> output_type = {
-        "Color",     "Normal",         "Tangent",
-        "Bitangent", "Shading Normal", "Geometry Normal"};
+        "Color",          "Normal",          "Tangent",     "Bitangent",
+        "Shading Normal", "Geometry Normal", "Front Facing"};
     reset_accumulation_ |= ImGui::Combo(
         "Output Channel", reinterpret_cast<int *>(&output_selection_),
         output_type.data(), output_type.size());
@@ -532,13 +532,26 @@ void App::UpdateImGui() {
           ImGui::SliderFloat("Alpha", &material.alpha, 0.0f, 1.0f, "%.3f");
       reset_accumulation_ |=
           scene.TextureCombo("Normal Map", &material.normal_map_id);
-      if (ImGui::Button("Remove Normal Map")) {
-        material.normal_map_id = -1;
-        reset_accumulation_ = true;
-      }
+
       if (material.normal_map_id != -1) {
         reset_accumulation_ |= ImGui::SliderFloat(
             "Normal Intensity", &material.normal_map_intensity, 0.0f, 10.0f);
+        bool reverse_bitangent = false;
+        if (material.normal_map_id < 0) {
+          reverse_bitangent = true;
+        }
+        reset_accumulation_ |=
+            ImGui::Checkbox("Reverse Bitangent", &reverse_bitangent);
+        if (reverse_bitangent) {
+          material.normal_map_id |= 0x80000000;
+        } else {
+          material.normal_map_id &= 0x7fffffff;
+        }
+
+        if (ImGui::Button("Remove Normal Map")) {
+          material.normal_map_id = -1;
+          reset_accumulation_ = true;
+        }
       }
     }
 

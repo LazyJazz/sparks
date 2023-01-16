@@ -92,7 +92,12 @@ HitRecord GetHitRecord(RayPayload ray_payload, vec3 origin, vec3 direction) {
   hit_record.material_type = mat.material_type;
 
   vec3 relative_normal = vec3(0, 0, 1);
-  if (mat.normal_map_id >= 0) {
+  float bitagent_signal = 1.0;
+  if (mat.normal_map_id != -1) {
+    if (mat.normal_map_id < 0) {
+      bitagent_signal = -1.0;
+    }
+    mat.normal_map_id &= 0x3fffffff;
     relative_normal =
         (SampleTexture(mat.normal_map_id, hit_record.tex_coord).xyz - 0.5) *
         2.0;
@@ -100,9 +105,10 @@ HitRecord GetHitRecord(RayPayload ray_payload, vec3 origin, vec3 direction) {
         relative_normal.xy * mat.normal_map_intensity / relative_normal.z, 1.0);
     relative_normal = normalize(relative_normal);
   }
-  hit_record.normal = mat3(hit_record.tangent, hit_record.bitangent,
-                           hit_record.shading_normal) *
-                      relative_normal;
+  hit_record.normal =
+      mat3(hit_record.tangent, bitagent_signal * hit_record.bitangent,
+           hit_record.shading_normal) *
+      relative_normal;
 
   hit_record.front_face = true;
   if (dot(direction, hit_record.geometry_normal) > 0.0) {
