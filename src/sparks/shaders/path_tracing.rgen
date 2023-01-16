@@ -56,7 +56,6 @@ vec3 SampleRay(vec3 origin, vec3 direction) {
   vec3 throughput = vec3(1.0);
   float mis_scale = 1.0;
   for (int b = 0; b < global_uniform_object.num_bounces; b++) {
-    // mis_scale = 0.0;
     TraceRay(origin, direction);
     hit_record = GetHitRecord(ray_payload, origin, direction);
 
@@ -97,7 +96,6 @@ vec3 SampleRay(vec3 origin, vec3 direction) {
     direction = omega_in;
 
     if (global_uniform_object.enable_mis) {
-      float direct_lighting_pdf = EvalDirectLighting(omega_in);
       mis_scale = pdf;
     }
 
