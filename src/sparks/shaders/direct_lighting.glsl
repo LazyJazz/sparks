@@ -13,9 +13,9 @@ float EstimateDirectLightingPdf() {
   if (global_uniform_object.total_power > 1e-4) {
     model_light_weight = 1.0;
   }
-  if (global_uniform_object.total_envmap_power > 1e-4) {
-    envmap_light_weight = 1.0;
-  }
+  //  if (global_uniform_object.total_envmap_power > 1e-4) {
+  //    envmap_light_weight = 1.0;
+  //  }
   total_light_weight = model_light_weight + envmap_light_weight;
   model_light_weight /= total_light_weight;
   envmap_light_weight /= total_light_weight;
@@ -82,10 +82,11 @@ void SampleModelLighting(out vec3 eval,
       primitive_index == object_sampler_info.num_primitives + 1) {
     return;
   }
+  primitive_index--;
   float lbound = primitive_cdf[object_sampler_info.primitive_offset +
-                               primitive_index - 1],
+                               primitive_index],
         rbound = primitive_cdf[object_sampler_info.primitive_offset +
-                               primitive_index];
+                               primitive_index + 1];
   r1 = (r1 - lbound) / (rbound - lbound);
   ObjectInfo object_info = object_infos[object_index];
   vec3 v0 = GetVertexPosition(
@@ -170,9 +171,9 @@ void SampleDirectLighting(out vec3 eval, out vec3 omega_in, out float pdf) {
   if (global_uniform_object.total_power > 1e-4) {
     model_light_weight = 1.0;
   }
-  if (global_uniform_object.total_envmap_power > 1e-4) {
-    envmap_light_weight = 1.0;
-  }
+  //  if (global_uniform_object.total_envmap_power > 1e-4) {
+  //    envmap_light_weight = 1.0;
+  //  }
   total_light_weight = model_light_weight + envmap_light_weight;
   if (total_light_weight < 1e-4) {
     return;
@@ -189,7 +190,7 @@ void SampleDirectLighting(out vec3 eval, out vec3 omega_in, out float pdf) {
     r1 -= envmap_light_weight;
     r1 /= model_light_weight;
     SampleModelLighting(eval, omega_in, pdf, r1);
-    eval /= model_light_weight;
+    // eval /= model_light_weight;
   }
 }
 
