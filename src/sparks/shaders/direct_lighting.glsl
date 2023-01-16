@@ -45,9 +45,9 @@ float EvalDirectLighting(vec3 omega_in) {
   return 0.0;
 }
 
-void SampleModelLighting(out vec3 eval,
-                         out vec3 omega_in,
-                         out float pdf,
+void SampleModelLighting(inout vec3 eval,
+                         inout vec3 omega_in,
+                         inout float pdf,
                          float r1) {
   int L = 0, R = global_uniform_object.num_objects;
   while (L < R) {
@@ -82,10 +82,11 @@ void SampleModelLighting(out vec3 eval,
       primitive_index == object_sampler_info.num_primitives + 1) {
     return;
   }
+  primitive_index--;
   float lbound = primitive_cdf[object_sampler_info.primitive_offset +
-                               primitive_index - 1],
+                               primitive_index],
         rbound = primitive_cdf[object_sampler_info.primitive_offset +
-                               primitive_index];
+                               primitive_index + 1];
   r1 = (r1 - lbound) / (rbound - lbound);
   ObjectInfo object_info = object_infos[object_index];
   vec3 v0 = GetVertexPosition(
@@ -127,9 +128,9 @@ void SampleModelLighting(out vec3 eval,
   }
 }
 
-void SampleEnvmapLighting(out vec3 eval,
-                          out vec3 omega_in,
-                          out float pdf,
+void SampleEnvmapLighting(inout vec3 eval,
+                          inout vec3 omega_in,
+                          inout float pdf,
                           float r1) {
   ivec2 envmap_size =
       textureSize(texture_samplers[global_uniform_object.envmap_id], 0);
@@ -177,6 +178,7 @@ void SampleDirectLighting(out vec3 eval, out vec3 omega_in, out float pdf) {
   if (total_light_weight < 1e-4) {
     return;
   }
+
   model_light_weight /= total_light_weight;
   envmap_light_weight /= total_light_weight;
 
