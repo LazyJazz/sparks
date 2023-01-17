@@ -2,6 +2,7 @@
 #define PRINCIPLED_DIFFUSE_GLSL
 
 #include "principled_util.glsl"
+#include "random.glsl"
 
 #ifndef Spectrum
 #define Spectrum vec3

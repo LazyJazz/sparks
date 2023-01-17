@@ -53,7 +53,7 @@ vec3 EvalBSDF(in vec3 L, out float pdf) {
     case MATERIAL_TYPE_LAMBERTIAN:
       return EvalLambertianBSDF(L, pdf);
     case MATERIAL_TYPE_PRINCIPLED:
-      return EvalPrincpledBSDF(
+      return EvalPrincipledBSDF(
           L, pdf, hit_record.base_color, hit_record.subsurface_color,
           hit_record.subsurface, hit_record.subsurface_radius,
           hit_record.metallic, hit_record.specular, hit_record.specular_tint,
