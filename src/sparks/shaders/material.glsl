@@ -2,8 +2,8 @@
 #define MATERIAL_GLSL
 
 struct Material {
-  vec3 albedo_color;
-  int albedo_texture_id;
+  vec3 base_color;
+  int base_color_texture_id;
 
   vec3 subsurface_color;
   float subsurface;

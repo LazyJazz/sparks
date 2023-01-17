@@ -16,8 +16,8 @@ enum MaterialType : int {
 class Scene;
 
 struct Material {
-  glm::vec3 albedo_color{0.8f};
-  int albedo_texture_id{0};
+  glm::vec3 base_color{0.8f};
+  int base_color_texture_id{0};
 
   glm::vec3 subsurface_color{};
   float subsurface{0.0f};

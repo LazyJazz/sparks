@@ -29,9 +29,10 @@ glm::vec3 PathTracer::SampleRay(glm::vec3 origin,
         break;
       } else {
         throughput *=
-            material.albedo_color *
-            glm::vec3{scene_->GetTextures()[material.albedo_texture_id].Sample(
-                hit_record.tex_coord)};
+            material.base_color *
+            glm::vec3{
+                scene_->GetTextures()[material.base_color_texture_id].Sample(
+                    hit_record.tex_coord)};
         origin = hit_record.position;
         direction = scene_->GetEnvmapLightDirection();
         radiance += throughput * scene_->GetEnvmapMinorColor();

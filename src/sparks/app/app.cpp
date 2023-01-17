@@ -521,10 +521,10 @@ void App::UpdateImGui() {
           ImGui::Combo("Type", reinterpret_cast<int *>(&material.material_type),
                        material_types.data(), material_types.size());
       rebuild_object_infos_ |= ImGui::ColorEdit3(
-          "Albedo Color", &material.albedo_color[0],
+          "Albedo Color", &material.base_color[0],
           ImGuiColorEditFlags_PickerHueWheel | ImGuiColorEditFlags_Float);
       rebuild_object_infos_ |=
-          scene.TextureCombo("Albedo Texture", &material.albedo_texture_id);
+          scene.TextureCombo("Albedo Texture", &material.base_color_texture_id);
       rebuild_object_infos_ |=
           ImGui::SliderFloat("Subsurface", &material.subsurface, 0.0f, 1.0f);
       rebuild_object_infos_ |= ImGui::ColorEdit3(
