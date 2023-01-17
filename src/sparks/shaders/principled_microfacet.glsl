@@ -17,6 +17,7 @@
 #define CLOSURE_BSDF_MICROFACET_GGX_FRESNEL_ID 0
 #define CLOSURE_BSDF_MICROFACET_GGX_CLEARCOAT_ID 1
 #define CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID 2
+#define CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID 3
 
 struct MicrofacetBsdf {
   Spectrum weight;
@@ -236,6 +237,17 @@ void bsdf_microfacet_ggx_fresnel_setup(inout MicrofacetBsdf bsdf) {
   bsdf.alpha_y = saturatef(bsdf.alpha_y);
   bsdf.type = CLOSURE_BSDF_MICROFACET_GGX_FRESNEL_ID;
   bsdf_microfacet_fresnel_color(bsdf);
+}
+
+void bsdf_microfacet_ggx_refraction_setup(inout MicrofacetBsdf bsdf) {
+  bsdf.clearcoat = 0.0;
+  bsdf.fresnel_color = vec3(0);
+  bsdf.color = vec3(0);
+  bsdf.cspec0 = vec3(0);
+  bsdf.alpha_x = saturatef(bsdf.alpha_x);
+  bsdf.alpha_y = bsdf.alpha_x;
+
+  bsdf.type = CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID;
 }
 
 Spectrum bsdf_microfacet_ggx_eval_reflect(const MicrofacetBsdf bsdf,

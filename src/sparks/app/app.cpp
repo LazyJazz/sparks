@@ -554,7 +554,7 @@ void App::UpdateImGui() {
       rebuild_object_infos_ |= ImGui::SliderFloat(
           "Clearcoat Roughness", &material.clearcoat_roughness, 0.0f, 1.0f);
       rebuild_object_infos_ |=
-          ImGui::SliderFloat("IOR", &material.ior, 0.0f, 1.0f);
+          ImGui::SliderFloat("IOR", &material.ior, 0.0f, 10.0f);
       rebuild_object_infos_ |= ImGui::SliderFloat(
           "Transmission", &material.transmission, 0.0f, 1.0f);
       rebuild_object_infos_ |=

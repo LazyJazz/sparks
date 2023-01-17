@@ -16,9 +16,11 @@
 #define float2 vec2
 #endif
 
-#define CLOSURE_COUNT 2
+#define CLOSURE_COUNT 4
 PrincipledDiffuseBsdf diffuse_closure;
 MicrofacetBsdf microfacet_closure;
+MicrofacetBsdf microfacet_bsdf_reflect_closure;
+MicrofacetBsdf microfacet_bsdf_refract_closure;
 
 void CalculateClosureWeight(vec3 base_color,
 
@@ -44,6 +46,8 @@ void CalculateClosureWeight(vec3 base_color,
                             float transmission_roughness) {
   diffuse_closure.sample_weight = 0.0;
   microfacet_closure.sample_weight = 0.0;
+  microfacet_bsdf_reflect_closure.sample_weight = 0.0;
+  microfacet_bsdf_refract_closure.sample_weight = 0.0;
   const vec3 Ng = hit_record.geometry_normal;
   const vec3 N = hit_record.normal;
   const vec3 V = hit_record.omega_v;
@@ -51,7 +55,7 @@ void CalculateClosureWeight(vec3 base_color,
   vec3 T = hit_record.tangent;
   if (anisotropic_rotation != 0.0f)
     T = rotate_around_axis(T, N, anisotropic_rotation * 2.0 * PI);
-  ior = hit_record.front_face ? 1.0f / ior : ior;
+  ior = hit_record.front_face ? ior : 1.0f / ior;
 
   // calculate fresnel for refraction
   float cosNO = dot(N, I);
@@ -112,6 +116,59 @@ void CalculateClosureWeight(vec3 base_color,
       bsdf_microfacet_ggx_fresnel_setup(microfacet_closure);
     }
   }
+
+  if (final_transmission > CLOSURE_WEIGHT_CUTOFF) {
+    Spectrum glass_weight = weight * final_transmission;
+    float3 cspec0 = base_color * specular_tint + vec3(1.0f - specular_tint);
+    float refl_roughness = roughness;
+
+    /* reflection */
+    {
+      PREPARE_BSDF(microfacet_bsdf_reflect_closure, glass_weight * fresnel);
+
+      {
+        microfacet_bsdf_reflect_closure.N = N;
+        microfacet_bsdf_reflect_closure.T = vec3(0);
+
+        microfacet_bsdf_reflect_closure.alpha_x =
+            refl_roughness * refl_roughness;
+        microfacet_bsdf_reflect_closure.alpha_y =
+            refl_roughness * refl_roughness;
+        microfacet_bsdf_reflect_closure.ior = ior;
+
+        microfacet_bsdf_reflect_closure.color = base_color;
+        microfacet_bsdf_reflect_closure.cspec0 = cspec0;
+        microfacet_bsdf_reflect_closure.clearcoat = 0.0f;
+
+        /* setup bsdf */
+        bsdf_microfacet_ggx_fresnel_setup(microfacet_bsdf_reflect_closure);
+      }
+    }
+
+    /* refraction */
+    {
+      /* This is to prevent MNEE from receiving a null BSDF. */
+      float refraction_fresnel = max(0.0001f, 1.0f - fresnel);
+      PREPARE_BSDF(microfacet_bsdf_refract_closure,
+                   base_color * glass_weight * refraction_fresnel);
+      {
+        microfacet_bsdf_refract_closure.N = N;
+        microfacet_bsdf_refract_closure.T = vec3(0);
+
+        transmission_roughness =
+            1.0f - (1.0f - refl_roughness) * (1.0f - transmission_roughness);
+
+        microfacet_bsdf_refract_closure.alpha_x =
+            transmission_roughness * transmission_roughness;
+        microfacet_bsdf_refract_closure.alpha_y =
+            transmission_roughness * transmission_roughness;
+        microfacet_bsdf_refract_closure.ior = ior;
+
+        /* setup bsdf */
+        bsdf_microfacet_ggx_refraction_setup(microfacet_bsdf_refract_closure);
+      }
+    }
+  }
 }
 
 vec3 EvalPrincipledBSDFKernel(in vec3 omega_in,
@@ -139,6 +196,31 @@ vec3 EvalPrincipledBSDFKernel(in vec3 omega_in,
     pdf += local_pdf * microfacet_closure.sample_weight;
     eval += local_eval * microfacet_closure.sample_weight;
     accum_weight += microfacet_closure.sample_weight;
+  }
+  if (exclude != 2 &&
+      microfacet_bsdf_reflect_closure.sample_weight >= CLOSURE_WEIGHT_CUTOFF) {
+    float local_pdf;
+    vec3 local_eval =
+        bsdf_microfacet_ggx_eval(microfacet_bsdf_reflect_closure,
+                                 hit_record.omega_v, omega_in, local_pdf) *
+        microfacet_bsdf_reflect_closure.weight *
+        microfacet_bsdf_reflect_closure.sample_weight;
+    pdf += local_pdf * microfacet_bsdf_reflect_closure.sample_weight;
+    eval += local_eval * microfacet_bsdf_reflect_closure.sample_weight;
+    accum_weight += microfacet_bsdf_reflect_closure.sample_weight;
+  }
+
+  if (exclude != 3 &&
+      microfacet_bsdf_refract_closure.sample_weight >= CLOSURE_WEIGHT_CUTOFF) {
+    float local_pdf;
+    vec3 local_eval =
+        bsdf_microfacet_ggx_eval(microfacet_bsdf_refract_closure,
+                                 hit_record.omega_v, omega_in, local_pdf) *
+        microfacet_bsdf_refract_closure.weight *
+        microfacet_bsdf_refract_closure.sample_weight;
+    pdf += local_pdf * microfacet_bsdf_refract_closure.sample_weight;
+    eval += local_eval * microfacet_bsdf_refract_closure.sample_weight;
+    accum_weight += microfacet_bsdf_refract_closure.sample_weight;
   }
   if (accum_weight < CLOSURE_WEIGHT_CUTOFF) {
     return eval;
@@ -218,6 +300,8 @@ void SamplePrincipledBSDF(out vec3 eval,
   float total_cdf;
   weight_cdf[0] = diffuse_closure.sample_weight;
   weight_cdf[1] = microfacet_closure.sample_weight + weight_cdf[0];
+  weight_cdf[2] = microfacet_bsdf_reflect_closure.sample_weight + weight_cdf[1];
+  weight_cdf[3] = microfacet_bsdf_refract_closure.sample_weight + weight_cdf[2];
   total_cdf = weight_cdf[CLOSURE_COUNT - 1];
   for (int i = 0; i < CLOSURE_COUNT; i++) {
     weight_cdf[i] /= total_cdf;
@@ -244,6 +328,30 @@ void SamplePrincipledBSDF(out vec3 eval,
     eval *= microfacet_closure.weight;
     exclude = 1;
     accum_weight = microfacet_closure.sample_weight;
+  } else if (r1 < weight_cdf[2]) {
+    r1 -= weight_cdf[1];
+    r1 /= weight_cdf[2] - weight_cdf[1];
+    vec2 sampled_roughness;
+    float eta;
+    bsdf_microfacet_ggx_sample(microfacet_bsdf_reflect_closure,
+                               hit_record.geometry_normal, hit_record.omega_v,
+                               r1, r2, eval, omega_in, pdf, sampled_roughness,
+                               eta);
+    eval *= microfacet_bsdf_reflect_closure.weight;
+    exclude = 2;
+    accum_weight = microfacet_bsdf_reflect_closure.sample_weight;
+  } else if (r1 < weight_cdf[3]) {
+    r1 -= weight_cdf[2];
+    r1 /= weight_cdf[3] - weight_cdf[2];
+    vec2 sampled_roughness;
+    float eta;
+    bsdf_microfacet_ggx_sample(microfacet_bsdf_refract_closure,
+                               hit_record.geometry_normal, hit_record.omega_v,
+                               r1, r2, eval, omega_in, pdf, sampled_roughness,
+                               eta);
+    eval *= microfacet_bsdf_refract_closure.weight;
+    exclude = 3;
+    accum_weight = microfacet_bsdf_refract_closure.sample_weight;
   }
   eval = EvalPrincipledBSDFKernel(omega_in, pdf, eval, accum_weight, exclude);
 }
