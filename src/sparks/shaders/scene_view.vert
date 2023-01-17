@@ -27,15 +27,16 @@ layout(binding = 2) readonly buffer material_uniform_object {
 
 void main() {
   EntityUniformObject entity_object = entity_objects[gl_InstanceIndex];
-  frag_position = vec3(entity_object.model * vec4(position, 1.0));
-  frag_normal = normalize(
-      vec3(inverse(transpose(entity_object.model)) * vec4(normal, 0.0)));
+  frag_position = vec3(entity_object.object_to_world * vec4(position, 1.0));
+  frag_normal = normalize(vec3(
+      inverse(transpose(entity_object.object_to_world)) * vec4(normal, 0.0)));
   if (dot(vec3(inverse(global_object.camera) * vec4(0.0, 0.0, 0.0, 1.0)) -
               frag_position,
           frag_normal) < 0.0) {
     frag_normal = -frag_normal;
   }
-  frag_tangent = normalize(vec3(entity_object.model * vec4(tangent, 0.0)));
+  frag_tangent =
+      normalize(vec3(entity_object.object_to_world * vec4(tangent, 0.0)));
   frag_tex_coord = tex_coord;
   instance_id = gl_InstanceIndex;
   gl_Position = global_object.projection * global_object.camera *

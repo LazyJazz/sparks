@@ -31,13 +31,10 @@ layout(binding = 8) readonly buffer index_array {
   uint indices[];
 };
 layout(binding = 9) uniform sampler2D[] texture_samplers;
-layout(binding = 10) readonly buffer object_sampler_info_array {
-  ObjectSamplerInfo object_sampler_infos[];
-};
-layout(binding = 11) readonly buffer primitive_cdf_buffer {
+layout(binding = 10) readonly buffer primitive_cdf_buffer {
   float primitive_cdf[];
 };
-layout(binding = 12) readonly buffer envmap_cdf_buffer {
+layout(binding = 11) readonly buffer envmap_cdf_buffer {
   float envmap_cdf[];
 };
 

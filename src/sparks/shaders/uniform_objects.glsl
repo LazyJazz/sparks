@@ -34,7 +34,15 @@ struct GlobalUniformObject {
 };
 
 struct EntityUniformObject {
-  mat4 model;
+  mat4 object_to_world;
+  float cdf;
+  float pdf;
+  int primitive_offset;
+  int num_primitives;
+  float power;
+  float area;
+  float sample_density;
+  float reserve;
 };
 
 struct ObjectInfo {
