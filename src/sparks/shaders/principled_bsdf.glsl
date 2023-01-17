@@ -4,6 +4,7 @@
 #include "hit_record.glsl"
 #include "principled_diffuse.glsl"
 #include "principled_microfacet.glsl"
+#include "principled_sheen.glsl"
 #include "random.glsl"
 
 #ifndef Spectrum
@@ -16,12 +17,13 @@
 #define float2 vec2
 #endif
 
-#define CLOSURE_COUNT 5
+#define CLOSURE_COUNT 6
 PrincipledDiffuseBsdf diffuse_closure;
 MicrofacetBsdf microfacet_closure;
 MicrofacetBsdf microfacet_bsdf_reflect_closure;
 MicrofacetBsdf microfacet_bsdf_refract_closure;
 MicrofacetBsdf microfacet_clearcoat_closure;
+PrincipledSheenBsdf sheen_closure;
 
 void CalculateClosureWeight(vec3 base_color,
 
@@ -80,6 +82,25 @@ void CalculateClosureWeight(vec3 base_color,
     if (diffuse_closure.sample_weight > 0.0) {
       diffuse_closure.N = N;
       diffuse_closure.roughness = roughness;
+    }
+  }
+
+  if (diffuse_weight > CLOSURE_WEIGHT_CUTOFF && sheen > CLOSURE_WEIGHT_CUTOFF) {
+    float m_cdlum = dot(vec3(0.2126729f, 0.7151522f, 0.0721750f), base_color);
+    float3 m_ctint = m_cdlum > 0.0f
+                         ? base_color / m_cdlum
+                         : vec3(1);  // normalize lum. to isolate hue+sat
+
+    /* color of the sheen component */
+    float3 sheen_color = vec3(1.0f - sheen_tint) + m_ctint * sheen_tint;
+
+    Spectrum sheen_weight = weight * sheen * sheen_color * diffuse_weight;
+
+    PREPARE_BSDF(sheen_closure, sheen_weight);
+
+    {
+      sheen_closure.N = N;
+      bsdf_principled_sheen_setup(sheen_closure);
     }
   }
 
@@ -245,7 +266,6 @@ vec3 EvalPrincipledBSDFKernel(in vec3 omega_in,
     eval += local_eval * microfacet_bsdf_refract_closure.sample_weight;
     accum_weight += microfacet_bsdf_refract_closure.sample_weight;
   }
-
   if (exclude != 4 &&
       microfacet_clearcoat_closure.sample_weight >= CLOSURE_WEIGHT_CUTOFF) {
     float local_pdf;
@@ -257,6 +277,16 @@ vec3 EvalPrincipledBSDFKernel(in vec3 omega_in,
     pdf += local_pdf * microfacet_clearcoat_closure.sample_weight;
     eval += local_eval * microfacet_clearcoat_closure.sample_weight;
     accum_weight += microfacet_clearcoat_closure.sample_weight;
+  }
+  if (exclude != 5 && sheen_closure.sample_weight >= CLOSURE_WEIGHT_CUTOFF) {
+    float local_pdf;
+    vec3 local_eval =
+        bsdf_principled_sheen_eval(sheen_closure, hit_record.omega_v, omega_in,
+                                   local_pdf) *
+        sheen_closure.weight * sheen_closure.sample_weight;
+    pdf += local_pdf * sheen_closure.sample_weight;
+    eval += local_eval * sheen_closure.sample_weight;
+    accum_weight += sheen_closure.sample_weight;
   }
   if (accum_weight < CLOSURE_WEIGHT_CUTOFF) {
     return eval;
@@ -339,6 +369,7 @@ void SamplePrincipledBSDF(out vec3 eval,
   weight_cdf[2] = microfacet_bsdf_reflect_closure.sample_weight + weight_cdf[1];
   weight_cdf[3] = microfacet_bsdf_refract_closure.sample_weight + weight_cdf[2];
   weight_cdf[4] = microfacet_clearcoat_closure.sample_weight + weight_cdf[3];
+  weight_cdf[5] = sheen_closure.sample_weight + weight_cdf[4];
   total_cdf = weight_cdf[CLOSURE_COUNT - 1];
   for (int i = 0; i < CLOSURE_COUNT; i++) {
     weight_cdf[i] /= total_cdf;
@@ -401,6 +432,17 @@ void SamplePrincipledBSDF(out vec3 eval,
     eval *= microfacet_clearcoat_closure.weight;
     exclude = 4;
     accum_weight = microfacet_clearcoat_closure.sample_weight;
+  } else if (r1 < weight_cdf[5]) {
+    r1 -= weight_cdf[4];
+    r1 /= weight_cdf[5] - weight_cdf[4];
+    vec2 sampled_roughness;
+    float eta;
+    bsdf_principled_sheen_sample(sheen_closure, hit_record.geometry_normal,
+                                 hit_record.omega_v, r1, r2, eval, omega_in,
+                                 pdf);
+    eval *= sheen_closure.weight;
+    exclude = 5;
+    accum_weight = sheen_closure.sample_weight;
   }
   eval = EvalPrincipledBSDFKernel(omega_in, pdf, eval, accum_weight, exclude);
 }
