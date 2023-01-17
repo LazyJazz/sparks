@@ -178,10 +178,6 @@ vec3 EvalPrincipledBSDF(in vec3 omega_in,
                          transmission, transmission_roughness);
   pdf = 0.0;
   return EvalPrincipledBSDFKernel(omega_in, pdf, vec3(0.0), 0.0, -1);
-  // Lambertian
-  //  float cos_pi = max(dot(N, omega_in), 0.0f) * INV_PI;
-  //  pdf = cos_pi;
-  //  return vec3(cos_pi) * hit_record.base_color;
 }
 
 void SamplePrincipledBSDF(out vec3 eval,
@@ -249,15 +245,6 @@ void SamplePrincipledBSDF(out vec3 eval,
     exclude = 1;
     accum_weight = microfacet_closure.sample_weight;
   }
-  //    const vec3 N = hit_record.normal;
-  //    const vec3 Ng = hit_record.geometry_normal;
-  //  SampleCosHemisphere(N, L, pdf);
-  //  if (dot(Ng, L) > 0.0) {
-  //    eval = vec3(pdf) * hit_record.base_color;
-  //  } else {
-  //    pdf = 0.0f;
-  //    eval = vec3(0.0);
-  //  }
   eval = EvalPrincipledBSDFKernel(omega_in, pdf, eval, accum_weight, exclude);
 }
 
