@@ -18,15 +18,15 @@
 		</material>
 	</model>
 
-	<model type="sphere">
-		<center value="0.0 0.0 0.0"/>
-		<radius value="0.5"/>
+	<model type="obj" name="matball">
+		<filename value="../../../assets/meshes/matball.obj"/>
 
-		<transform type="translate" value="0.0 0.5 0.0"/>
+		<transform type="world">
+				<scale value="1 1 1"/>
+		</transform>
 
-		<material type="lambertian">
+		<material type="principled">
 			<albedo value="1 1 1"/>
-			<albedo_texture value="../../textures/earth.jpg"/>
 		</material>
 	</model>
 

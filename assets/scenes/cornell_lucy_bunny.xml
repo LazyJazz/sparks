@@ -12,16 +12,16 @@
 
     <!--Light-->
     <model name="Light">
-        <vertex position="343.0 548.7 227.0"/>
-        <vertex position="343.0 548.7 332.0"/>
-        <vertex position="213.0 548.7 332.0"/>
-        <vertex position="213.0 548.7 227.0"/>
+        <vertex position="343.0 548.7 227.0" tex_coord="0 0"/>
+        <vertex position="343.0 548.7 332.0" tex_coord="1 0"/>
+        <vertex position="213.0 548.7 332.0" tex_coord="1 1"/>
+        <vertex position="213.0 548.7 227.0" tex_coord="0 1"/>
         <index value="0"/>
         <index value="1"/>
         <index value="3"/>
         <index value="1"/>
-        <index value="3"/>
         <index value="2"/>
+        <index value="3"/>
 
         <material type="emission">
             <emission value="1.0 1.0 1.0"/>
@@ -31,16 +31,16 @@
 
     <!--floor-->
     <model name="Floor">
-        <vertex position="552.8 0.0   0.0"/>
-        <vertex position="0.0 0.0   0.0"/>
-        <vertex position="0.0 0.0 559.2"/>
-        <vertex position="549.6 0.0 559.2"/>
+        <vertex position="552.8 0.0   0.0" tex_coord="0 0"/>
+        <vertex position="0.0 0.0   0.0" tex_coord="1 0"/>
+        <vertex position="0.0 0.0 559.2" tex_coord="1 1"/>
+        <vertex position="549.6 0.0 559.2" tex_coord="0 1"/>
         <index value="0"/>
         <index value="1"/>
         <index value="3"/>
         <index value="1"/>
-        <index value="3"/>
         <index value="2"/>
+        <index value="3"/>
 
         <material type="lambertian">
             <albedo value="0.8 0.8 0.8"/>
@@ -49,16 +49,16 @@
 
     <!--ceiling-->
     <model name="Ceiling">
-        <vertex position="556.0 548.8 0.0  "/>
-        <vertex position="556.0 548.8 559.2"/>
-        <vertex position="0.0 548.8 559.2"/>
-        <vertex position="0.0 548.8   0.0"/>
+        <vertex position="556.0 548.8 0.0  " tex_coord="0 0"/>
+        <vertex position="556.0 548.8 559.2" tex_coord="1 0"/>
+        <vertex position="0.0 548.8 559.2" tex_coord="1 1"/>
+        <vertex position="0.0 548.8   0.0" tex_coord="0 1"/>
         <index value="0"/>
         <index value="1"/>
         <index value="3"/>
         <index value="1"/>
-        <index value="3"/>
         <index value="2"/>
+        <index value="3"/>
 
         <material type="lambertian">
             <albedo value="0.8 0.8 0.8"/>
@@ -67,16 +67,16 @@
 
     <!--back wall-->
     <model name="Back Wall">
-        <vertex position="549.6   0.0 559.2"/>
-        <vertex position="0.0   0.0 559.2"/>
-        <vertex position="0.0 548.8 559.2"/>
-        <vertex position="556.0 548.8 559.2"/>
+        <vertex position="549.6   0.0 559.2" tex_coord="0 0"/>
+        <vertex position="0.0   0.0 559.2" tex_coord="1 0"/>
+        <vertex position="0.0 548.8 559.2" tex_coord="1 1"/>
+        <vertex position="556.0 548.8 559.2" tex_coord="0 1"/>
         <index value="0"/>
         <index value="1"/>
         <index value="3"/>
         <index value="1"/>
-        <index value="3"/>
         <index value="2"/>
+        <index value="3"/>
 
         <material type="lambertian">
             <albedo value="0.8 0.8 0.8"/>
@@ -85,16 +85,16 @@
 
     <!--right wall-->
     <model name="Right Wall">
-        <vertex position="0.0   0.0 559.2 "/>
-        <vertex position="0.0   0.0   0.0"/>
-        <vertex position="0.0 548.8   0.0"/>
-        <vertex position="0.0 548.8 559.2"/>
+        <vertex position="0.0   0.0 559.2 " tex_coord="0 0"/>
+        <vertex position="0.0   0.0   0.0" tex_coord="1 0"/>
+        <vertex position="0.0 548.8   0.0" tex_coord="1 1"/>
+        <vertex position="0.0 548.8 559.2" tex_coord="0 1"/>
         <index value="0"/>
         <index value="1"/>
         <index value="3"/>
         <index value="1"/>
-        <index value="3"/>
         <index value="2"/>
+        <index value="3"/>
 
         <material type="lambertian">
             <albedo value="0.0 0.8 0.0"/>
@@ -103,16 +103,16 @@
 
     <!--left wall-->
     <model name="Left Wall">
-        <vertex position="552.8   0.0   0.0 "/>
-        <vertex position="549.6   0.0 559.2"/>
-        <vertex position="556.0 548.8 559.2"/>
-        <vertex position="556.0 548.8   0.0"/>
+        <vertex position="552.8   0.0   0.0 " tex_coord="0 0"/>
+        <vertex position="549.6   0.0 559.2" tex_coord="1 0"/>
+        <vertex position="556.0 548.8 559.2" tex_coord="1 1"/>
+        <vertex position="556.0 548.8   0.0" tex_coord="0 1"/>
         <index value="0"/>
         <index value="1"/>
         <index value="3"/>
         <index value="1"/>
-        <index value="3"/>
         <index value="2"/>
+        <index value="3"/>
 
         <material type="lambertian">
             <albedo value="0.8 0.0 0.0"/>

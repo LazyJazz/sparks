@@ -521,10 +521,45 @@ void App::UpdateImGui() {
           ImGui::Combo("Type", reinterpret_cast<int *>(&material.material_type),
                        material_types.data(), material_types.size());
       rebuild_object_infos_ |= ImGui::ColorEdit3(
-          "Albedo Color", &material.albedo_color[0],
+          "Albedo Color", &material.base_color[0],
           ImGuiColorEditFlags_PickerHueWheel | ImGuiColorEditFlags_Float);
       rebuild_object_infos_ |=
-          scene.TextureCombo("Albedo Texture", &material.albedo_texture_id);
+          scene.TextureCombo("Albedo Texture", &material.base_color_texture_id);
+      rebuild_object_infos_ |=
+          ImGui::SliderFloat("Subsurface", &material.subsurface, 0.0f, 1.0f);
+      rebuild_object_infos_ |= ImGui::ColorEdit3(
+          "Subsurface Color", &material.subsurface_color[0],
+          ImGuiColorEditFlags_PickerHueWheel | ImGuiColorEditFlags_Float);
+      rebuild_object_infos_ |= ImGui::SliderFloat3(
+          "Subsurface Radius", &material.subsurface_radius[0], 0.0f, 1e4f,
+          "%.3f", ImGuiSliderFlags_Logarithmic);
+      rebuild_object_infos_ |=
+          ImGui::SliderFloat("Metallic", &material.metallic, 0.0f, 1.0f);
+      rebuild_object_infos_ |=
+          ImGui::SliderFloat("Specular", &material.specular, 0.0f, 1.0f);
+      rebuild_object_infos_ |= ImGui::SliderFloat(
+          "Specular Tint", &material.specular_tint, 0.0f, 1.0f);
+      rebuild_object_infos_ |=
+          ImGui::SliderFloat("Roughness", &material.roughness, 0.0f, 1.0f);
+      rebuild_object_infos_ |=
+          ImGui::SliderFloat("Anisotropic", &material.anisotropic, 0.0f, 1.0f);
+      rebuild_object_infos_ |= ImGui::SliderFloat(
+          "Anisotropic Rotation", &material.anisotropic_rotation, 0.0f, 1.0f);
+      rebuild_object_infos_ |=
+          ImGui::SliderFloat("Sheen", &material.sheen, 0.0f, 1.0f);
+      rebuild_object_infos_ |=
+          ImGui::SliderFloat("Sheen Tint", &material.sheen_tint, 0.0f, 1.0f);
+      rebuild_object_infos_ |=
+          ImGui::SliderFloat("Clearcoat", &material.clearcoat, 0.0f, 1.0f);
+      rebuild_object_infos_ |= ImGui::SliderFloat(
+          "Clearcoat Roughness", &material.clearcoat_roughness, 0.0f, 1.0f);
+      rebuild_object_infos_ |=
+          ImGui::SliderFloat("IOR", &material.ior, 0.0f, 10.0f);
+      rebuild_object_infos_ |= ImGui::SliderFloat(
+          "Transmission", &material.transmission, 0.0f, 1.0f);
+      rebuild_object_infos_ |=
+          ImGui::SliderFloat("Transmission Roughness",
+                             &material.transmission_roughness, 0.0f, 1.0f);
       rebuild_object_infos_ |= ImGui::ColorEdit3(
           "Emission", &material.emission[0],
           ImGuiColorEditFlags_PickerHueWheel | ImGuiColorEditFlags_Float);
@@ -718,33 +753,6 @@ void App::UpdateDynamicBuffer() {
   global_uniform_buffer_far_->operator[](0) = global_uniform_object;
 
   UpdateObjectInfo();
-
-  //  auto &entities = renderer_->GetScene().GetEntities();
-  //
-  //  if (entities.size() <= entity_uniform_buffer_->Size()) {
-  //    core_->GetDevice()->WaitIdle();
-  //    entity_uniform_buffer_->Resize(entities.size() + 1);
-  //    material_uniform_buffer_->Resize(entities.size() + 1);
-  //    if (preview_render_node_) {
-  //      preview_render_node_->UpdateDescriptorSetBinding(1);
-  //      preview_render_node_->UpdateDescriptorSetBinding(2);
-  //    }
-  //    if (preview_render_node_far_) {
-  //      preview_render_node_far_->UpdateDescriptorSetBinding(1);
-  //      preview_render_node_far_->UpdateDescriptorSetBinding(2);
-  //    }
-  //    if (ray_tracing_render_node_) {
-  //      ray_tracing_render_node_->UpdateDescriptorSetBinding(4);
-  //      ray_tracing_render_node_->UpdateDescriptorSetBinding(5);
-  //    }
-  //  }
-  //
-  //  for (int i = 0; i < entities.size(); i++) {
-  //    auto &entity = entities[i];
-  //    entity_uniform_buffer_->operator[](i).object_to_world =
-  //    entity.GetTransformMatrix(); material_uniform_buffer_->operator[](i) =
-  //    entity.GetMaterial();
-  //  }
 }
 
 void App::UpdateHostStencilBuffer() {

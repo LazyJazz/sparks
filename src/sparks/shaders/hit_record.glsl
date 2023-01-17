@@ -16,8 +16,29 @@ struct HitRecord {
   vec2 tex_coord;
   bool front_face;
   vec3 omega_v;
-
   vec3 base_color;
+
+  vec3 subsurface_color;
+  float subsurface;
+
+  vec3 subsurface_radius;
+  float metallic;
+
+  float specular;
+  float specular_tint;
+  float roughness;
+  float anisotropic;
+
+  float anisotropic_rotation;
+  float sheen;
+  float sheen_tint;
+  float clearcoat;
+
+  float clearcoat_roughness;
+  float ior;
+  float transmission;
+  float transmission_roughness;
+
   vec3 emission;
   float emission_strength;
   float alpha;
@@ -26,24 +47,7 @@ struct HitRecord {
 
 HitRecord GetHitRecord(RayPayload ray_payload, vec3 origin, vec3 direction) {
   HitRecord hit_record;
-  hit_record.hit_entity_id = -1;
-  hit_record.position = vec3(0);
-  hit_record.normal = vec3(0);
-  hit_record.shading_normal = vec3(0);
-  hit_record.geometry_normal = vec3(0);
-  hit_record.tangent = vec3(0);
-  hit_record.bitangent = vec3(0);
-  hit_record.tex_coord = vec2(0);
-  hit_record.front_face = true;
   hit_record.omega_v = -direction;
-  hit_record.base_color = vec3(0);
-  hit_record.emission = vec3(0);
-  hit_record.emission_strength = 0.0;
-  hit_record.alpha = 0.0;
-  hit_record.material_type = 0;
-  if (ray_payload.t == -1.0) {
-    return hit_record;
-  }
   ObjectInfo object_info = object_infos[ray_payload.object_id];
   Vertex v0 = GetVertex(
       object_info.vertex_offset +
@@ -84,10 +88,29 @@ HitRecord GetHitRecord(RayPayload ray_payload, vec3 origin, vec3 direction) {
 
   Material mat = materials[hit_record.hit_entity_id];
   hit_record.base_color =
-      mat.albedo_color *
-      SampleTexture(mat.albedo_texture_id, hit_record.tex_coord).xyz;
+      mat.base_color *
+      SampleTexture(mat.base_color_texture_id, hit_record.tex_coord).xyz;
+
+  hit_record.subsurface_color = mat.subsurface_color;
+  hit_record.subsurface = mat.subsurface;
+  hit_record.subsurface_radius = mat.subsurface_radius;
+  hit_record.metallic = mat.metallic;
+  hit_record.specular = mat.specular;
+  hit_record.specular_tint = mat.specular_tint;
+  hit_record.roughness = mat.roughness;
+  hit_record.anisotropic = mat.anisotropic;
+  hit_record.anisotropic_rotation = mat.anisotropic_rotation;
+  hit_record.sheen = mat.sheen;
+  hit_record.sheen_tint = mat.sheen_tint;
+  hit_record.clearcoat = mat.clearcoat;
+  hit_record.clearcoat_roughness = mat.clearcoat_roughness;
+  hit_record.ior = mat.ior;
+  hit_record.transmission = mat.transmission;
+  hit_record.transmission_roughness = mat.transmission_roughness;
+
   hit_record.emission = mat.emission;
   hit_record.emission_strength = mat.emission_strength;
+
   hit_record.alpha = mat.alpha;
   hit_record.material_type = mat.material_type;
 

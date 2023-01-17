@@ -22,11 +22,11 @@ Material::Material(Scene *scene, const tinyxml2::XMLElement *material_element)
     return;
   }
 
-  albedo_color = glm::vec3{1.0f};
+  base_color = glm::vec3{1.0f};
 
   auto child_element = material_element->FirstChildElement("albedo");
   if (child_element) {
-    albedo_color = StringToVec3(child_element->FindAttribute("value")->Value());
+    base_color = StringToVec3(child_element->FindAttribute("value")->Value());
   }
 
   child_element = material_element->FirstChildElement("albedo_texture");
@@ -34,7 +34,7 @@ Material::Material(Scene *scene, const tinyxml2::XMLElement *material_element)
     std::string path = child_element->FindAttribute("value")->Value();
     Texture albedo_texture(1, 1);
     if (Texture::Load(path, albedo_texture)) {
-      albedo_texture_id =
+      base_color_texture_id =
           scene->AddTexture(albedo_texture, PathToFilename(path));
     }
   }
@@ -60,6 +60,6 @@ Material::Material(Scene *scene, const tinyxml2::XMLElement *material_element)
 }
 
 Material::Material(const glm::vec3 &albedo) : Material() {
-  albedo_color = albedo;
+  base_color = albedo;
 }
 }  // namespace sparks

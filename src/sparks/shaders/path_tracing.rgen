@@ -80,7 +80,8 @@ vec3 SampleRay(vec3 origin, vec3 direction) {
     } else if (global_uniform_object.output_selection == 5) {
       return (hit_record.geometry_normal + 1.0) * 0.5;
     } else if (global_uniform_object.output_selection == 6) {
-      return hit_record.front_face ? vec3(1, 0, 0) : vec3(0, 0, 1);
+      return (hit_record.front_face ? vec3(1, 0, 0) : vec3(0, 0, 1)) *
+             dot(hit_record.geometry_normal, -direction);
     }
 
     radiance += throughput * hit_record.emission *

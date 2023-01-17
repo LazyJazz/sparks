@@ -60,13 +60,20 @@ void MakeOrthonormals(const vec3 N, out vec3 a, out vec3 b) {
   b = cross(N, a);
 }
 
-void SampleCosHemisphere(const vec3 N, out vec3 omega_in, out float pdf) {
-  float r1 = RandomFloat() * PI * 2.0;
-  float r2 = RandomFloat();
+void sample_cos_hemisphere(const vec3 N,
+                           float r1,
+                           const float r2,
+                           out vec3 omega_in,
+                           out float pdf) {
+  r1 *= PI * 2.0;
   vec3 T, B;
   MakeOrthonormals(N, T, B);
   omega_in = vec3(vec2(sin(r1), cos(r1)) * sqrt(1.0 - r2), sqrt(r2));
   pdf = omega_in.z * INV_PI;
   omega_in = mat3(T, B, N) * omega_in;
+}
+
+void SampleCosHemisphere(const vec3 N, out vec3 omega_in, out float pdf) {
+  sample_cos_hemisphere(N, RandomFloat(), RandomFloat(), omega_in, pdf);
 }
 #endif
