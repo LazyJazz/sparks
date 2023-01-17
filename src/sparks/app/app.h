@@ -33,7 +33,7 @@ class App {
   void UpdateCamera();
   void UploadAccumulationResult();
   void UpdateTopLevelAccelerationStructure();
-  void UpdateLightSourceSamplerInfo();
+  void UpdateObjectInfo();
   void UpdateRenderNodes();
 
   void RebuildRenderNodes();
@@ -56,9 +56,9 @@ class App {
       global_uniform_buffer_;
   std::unique_ptr<vulkan::framework::DynamicBuffer<GlobalUniformObject>>
       global_uniform_buffer_far_;
-  std::unique_ptr<vulkan::framework::DynamicBuffer<EntityUniformObject>>
+  std::unique_ptr<vulkan::framework::StaticBuffer<EntityUniformObject>>
       entity_uniform_buffer_;
-  std::unique_ptr<vulkan::framework::DynamicBuffer<Material>>
+  std::unique_ptr<vulkan::framework::StaticBuffer<Material>>
       material_uniform_buffer_;
 
   std::unique_ptr<vulkan::framework::RenderNode> host_result_render_node_;
@@ -118,10 +118,8 @@ class App {
   bool gui_pause_{false};
 
   bool rebuild_render_nodes_{true};
-  bool rebuild_direct_lighting_assets_{true};
+  bool rebuild_object_infos_{true};
   std::unique_ptr<vulkan::framework::StaticBuffer<float>> primitive_cdf_buffer_;
-  std::unique_ptr<vulkan::framework::StaticBuffer<ObjectSamplerInfo>>
-      object_sampler_info_buffer_;
   std::unique_ptr<vulkan::framework::StaticBuffer<float>> envmap_cdf_buffer_;
   float total_power_{0.0f};
   int output_selection_{0};

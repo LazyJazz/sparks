@@ -170,11 +170,11 @@ void App::OnInit() {
       std::make_unique<vulkan::framework::DynamicBuffer<GlobalUniformObject>>(
           core_.get(), 1);
   entity_uniform_buffer_ =
-      std::make_unique<vulkan::framework::DynamicBuffer<EntityUniformObject>>(
-          core_.get(), 16384);
+      std::make_unique<vulkan::framework::StaticBuffer<EntityUniformObject>>(
+          core_.get(), 1);
   material_uniform_buffer_ =
-      std::make_unique<vulkan::framework::DynamicBuffer<Material>>(core_.get(),
-                                                                   16384);
+      std::make_unique<vulkan::framework::StaticBuffer<Material>>(core_.get(),
+                                                                  1);
 
   std::vector<glm::vec2> vertices{
       {0.0f, 0.0f}, {0.0f, 1.0f}, {1.0f, 0.0f}, {1.0f, 1.0f}};
@@ -195,9 +195,6 @@ void App::OnInit() {
 
   primitive_cdf_buffer_ =
       std::make_unique<vulkan::framework::StaticBuffer<float>>(core_.get(), 1);
-  object_sampler_info_buffer_ =
-      std::make_unique<vulkan::framework::StaticBuffer<ObjectSamplerInfo>>(
-          core_.get(), 1);
   envmap_cdf_buffer_ =
       std::make_unique<vulkan::framework::StaticBuffer<float>>(core_.get(), 1);
   ImGuizmo::Enable(true);
@@ -220,6 +217,13 @@ void App::OnUpdate(uint32_t ms) {
       renderer_->GetScene().UpdateEnvmapConfiguration();
       envmap_require_configure_ = false;
     });
+    if (app_settings_.hardware_renderer) {
+      envmap_cdf_buffer_->Resize(renderer_->GetScene().GetEnvmapCdf().size());
+      envmap_cdf_buffer_->Upload(renderer_->GetScene().GetEnvmapCdf().data());
+      if (ray_tracing_render_node_) {
+        ray_tracing_render_node_->UpdateDescriptorSetBinding(11);
+      }
+    }
   }
   UpdateDynamicBuffer();
   UpdateHostStencilBuffer();
@@ -238,7 +242,6 @@ void App::OnUpdate(uint32_t ms) {
   }
   if (app_settings_.hardware_renderer) {
     UpdateTopLevelAccelerationStructure();
-    UpdateLightSourceSamplerInfo();
   }
   if (rebuild_ray_tracing_pipeline_) {
     BuildRayTracingPipeline();
@@ -514,33 +517,33 @@ void App::UpdateImGui() {
       std::vector<const char *> material_types = {
           "Lambertian", "Specular", "Transmissive", "Principled", "Emission"};
       Material &material = scene.GetEntity(selected_entity_id_).GetMaterial();
-      reset_accumulation_ |=
+      rebuild_object_infos_ |=
           ImGui::Combo("Type", reinterpret_cast<int *>(&material.material_type),
                        material_types.data(), material_types.size());
-      reset_accumulation_ |= ImGui::ColorEdit3(
+      rebuild_object_infos_ |= ImGui::ColorEdit3(
           "Albedo Color", &material.albedo_color[0],
           ImGuiColorEditFlags_PickerHueWheel | ImGuiColorEditFlags_Float);
-      reset_accumulation_ |=
+      rebuild_object_infos_ |=
           scene.TextureCombo("Albedo Texture", &material.albedo_texture_id);
-      reset_accumulation_ |= ImGui::ColorEdit3(
+      rebuild_object_infos_ |= ImGui::ColorEdit3(
           "Emission", &material.emission[0],
           ImGuiColorEditFlags_PickerHueWheel | ImGuiColorEditFlags_Float);
-      reset_accumulation_ |=
+      rebuild_object_infos_ |=
           ImGui::SliderFloat("Emission Strength", &material.emission_strength,
                              0.0f, 1e5f, "%.3f", ImGuiSliderFlags_Logarithmic);
-      reset_accumulation_ |=
+      rebuild_object_infos_ |=
           ImGui::SliderFloat("Alpha", &material.alpha, 0.0f, 1.0f, "%.3f");
-      reset_accumulation_ |=
+      rebuild_object_infos_ |=
           scene.TextureCombo("Normal Map", &material.normal_map_id);
 
       if (material.normal_map_id != -1) {
-        reset_accumulation_ |= ImGui::SliderFloat(
+        rebuild_object_infos_ |= ImGui::SliderFloat(
             "Normal Intensity", &material.normal_map_intensity, 0.0f, 10.0f);
         bool reverse_bitangent = false;
         if (material.normal_map_id < 0) {
           reverse_bitangent = true;
         }
-        reset_accumulation_ |=
+        rebuild_object_infos_ |=
             ImGui::Checkbox("Reverse Bitangent", &reverse_bitangent);
         if (reverse_bitangent) {
           material.normal_map_id |= 0x80000000;
@@ -550,7 +553,7 @@ void App::UpdateImGui() {
 
         if (ImGui::Button("Remove Normal Map")) {
           material.normal_map_id = -1;
-          reset_accumulation_ = true;
+          rebuild_object_infos_ = true;
         }
       }
     }
@@ -591,7 +594,7 @@ void App::UpdateImGui() {
                    ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoMove |
                        ImGuiWindowFlags_NoTitleBar);
       statistic_window_size = ImGui::GetWindowSize();
-      reset_accumulation_ |= UpdateImGuizmo();
+      rebuild_object_infos_ |= UpdateImGuizmo();
       ImGui::End();
     }
 
@@ -661,7 +664,7 @@ void App::UpdateImGui() {
 
   ImGui::Render();
 
-  rebuild_direct_lighting_assets_ |= reset_accumulation_;
+  reset_accumulation_ |= rebuild_object_infos_;
 }
 
 void App::UpdateDynamicBuffer() {
@@ -713,12 +716,35 @@ void App::UpdateDynamicBuffer() {
               float(core_->GetFramebufferHeight()),
           30.0f, 10000.0f);
   global_uniform_buffer_far_->operator[](0) = global_uniform_object;
-  auto &entities = renderer_->GetScene().GetEntities();
-  for (int i = 0; i < entities.size(); i++) {
-    auto &entity = entities[i];
-    entity_uniform_buffer_->operator[](i).model = entity.GetTransformMatrix();
-    material_uniform_buffer_->operator[](i) = entity.GetMaterial();
-  }
+
+  UpdateObjectInfo();
+
+  //  auto &entities = renderer_->GetScene().GetEntities();
+  //
+  //  if (entities.size() <= entity_uniform_buffer_->Size()) {
+  //    core_->GetDevice()->WaitIdle();
+  //    entity_uniform_buffer_->Resize(entities.size() + 1);
+  //    material_uniform_buffer_->Resize(entities.size() + 1);
+  //    if (preview_render_node_) {
+  //      preview_render_node_->UpdateDescriptorSetBinding(1);
+  //      preview_render_node_->UpdateDescriptorSetBinding(2);
+  //    }
+  //    if (preview_render_node_far_) {
+  //      preview_render_node_far_->UpdateDescriptorSetBinding(1);
+  //      preview_render_node_far_->UpdateDescriptorSetBinding(2);
+  //    }
+  //    if (ray_tracing_render_node_) {
+  //      ray_tracing_render_node_->UpdateDescriptorSetBinding(4);
+  //      ray_tracing_render_node_->UpdateDescriptorSetBinding(5);
+  //    }
+  //  }
+  //
+  //  for (int i = 0; i < entities.size(); i++) {
+  //    auto &entity = entities[i];
+  //    entity_uniform_buffer_->operator[](i).object_to_world =
+  //    entity.GetTransformMatrix(); material_uniform_buffer_->operator[](i) =
+  //    entity.GetMaterial();
+  //  }
 }
 
 void App::UpdateHostStencilBuffer() {
@@ -1181,8 +1207,6 @@ void App::BuildRayTracingPipeline() {
                                              VK_SHADER_STAGE_RAYGEN_BIT_KHR);
   ray_tracing_render_node_->AddUniformBinding(binding_texture_samplers_,
                                               VK_SHADER_STAGE_RAYGEN_BIT_KHR);
-  ray_tracing_render_node_->AddBufferBinding(object_sampler_info_buffer_.get(),
-                                             VK_SHADER_STAGE_RAYGEN_BIT_KHR);
   ray_tracing_render_node_->AddBufferBinding(primitive_cdf_buffer_.get(),
                                              VK_SHADER_STAGE_RAYGEN_BIT_KHR);
   ray_tracing_render_node_->AddBufferBinding(envmap_cdf_buffer_.get(),
@@ -1256,6 +1280,8 @@ void App::OpenFile(const std::string &path) {
     renderer_->LoadTexture(path);
   } else if (absl::EndsWith(path, ".obj")) {
     renderer_->LoadObjMesh(path);
+    reset_accumulation_ = true;
+    rebuild_object_infos_ = true;
   } else if (absl::EndsWith(path, ".xml")) {
     renderer_->LoadScene(path);
     renderer_->ResetAccumulation();
@@ -1264,9 +1290,10 @@ void App::OpenFile(const std::string &path) {
     device_texture_samplers_.clear();
     entity_device_assets_.clear();
     selected_entity_id_ = -1;
+    envmap_require_configure_ = true;
     if (app_settings_.hardware_renderer) {
       reset_accumulation_ = true;
-      rebuild_direct_lighting_assets_ = true;
+      rebuild_object_infos_ = true;
       top_level_acceleration_structure_.reset();
       bottom_level_acceleration_structures_.clear();
       object_info_data_.clear();
@@ -1276,20 +1303,19 @@ void App::OpenFile(const std::string &path) {
   }
 }
 
-void App::UpdateLightSourceSamplerInfo() {
-  if (rebuild_direct_lighting_assets_ &&
-      renderer_->GetRendererSettings().enable_mis) {
-    std::vector<ObjectSamplerInfo> object_sampler_infos;
+void App::UpdateObjectInfo() {
+  if (rebuild_object_infos_) {
+    std::vector<EntityUniformObject> object_sampler_infos;
     std::vector<float> primitive_cdf;
     auto &entities = renderer_->GetScene().GetEntities();
 
     float total_power = 0.0f;
     for (auto &entity : entities) {
-      ObjectSamplerInfo object_sampler_info{};
+      EntityUniformObject object_sampler_info{};
 
       auto mat = entity.GetMaterial();
       auto transform = entity.GetTransformMatrix();
-      object_sampler_info.local_to_world = transform;
+      object_sampler_info.object_to_world = transform;
       object_sampler_info.num_primitives = 0;
       object_sampler_info.primitive_offset = primitive_cdf.size();
       object_sampler_info.power = 0.0f;
@@ -1351,20 +1377,37 @@ void App::UpdateLightSourceSamplerInfo() {
       primitive_cdf.emplace_back();
     }
 
-    object_sampler_info_buffer_->Resize(object_sampler_infos.size());
-    object_sampler_info_buffer_->Upload(object_sampler_infos.data());
-    primitive_cdf_buffer_->Resize(primitive_cdf.size());
-    primitive_cdf_buffer_->Upload(primitive_cdf.data());
-    envmap_cdf_buffer_->Resize(renderer_->GetScene().GetEnvmapCdf().size());
-    envmap_cdf_buffer_->Upload(renderer_->GetScene().GetEnvmapCdf().data());
-
-    if (ray_tracing_render_node_) {
-      ray_tracing_render_node_->UpdateDescriptorSetBinding(10);
-      ray_tracing_render_node_->UpdateDescriptorSetBinding(11);
-      ray_tracing_render_node_->UpdateDescriptorSetBinding(12);
+    std::vector<Material> materials;
+    for (auto &entitie : entities) {
+      materials.push_back(entitie.GetMaterial());
     }
 
-    rebuild_direct_lighting_assets_ = false;
+    {
+      material_uniform_buffer_->Resize(entities.size());
+      entity_uniform_buffer_->Resize(object_sampler_infos.size());
+      primitive_cdf_buffer_->Resize(primitive_cdf.size());
+
+      if (preview_render_node_) {
+        preview_render_node_->UpdateDescriptorSetBinding(1);
+        preview_render_node_->UpdateDescriptorSetBinding(2);
+      }
+      if (preview_render_node_far_) {
+        preview_render_node_far_->UpdateDescriptorSetBinding(1);
+        preview_render_node_far_->UpdateDescriptorSetBinding(2);
+      }
+
+      if (ray_tracing_render_node_) {
+        ray_tracing_render_node_->UpdateDescriptorSetBinding(4);
+        ray_tracing_render_node_->UpdateDescriptorSetBinding(5);
+        ray_tracing_render_node_->UpdateDescriptorSetBinding(10);
+      }
+    }
+
+    entity_uniform_buffer_->Upload(object_sampler_infos.data());
+    primitive_cdf_buffer_->Upload(primitive_cdf.data());
+    material_uniform_buffer_->Upload(materials.data());
+
+    rebuild_object_infos_ = false;
   }
 }
 

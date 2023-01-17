@@ -21,7 +21,7 @@ float EstimateDirectLightingPdf() {
   envmap_light_weight /= total_light_weight;
   if (model_light_weight > 0.0) {
     if (ray_payload.t != -1.0) {
-      pdf += object_sampler_infos[ray_payload.object_id].sample_density *
+      pdf += entity_objects[ray_payload.object_id].sample_density *
              ray_payload.t * ray_payload.t * model_light_weight;
     }
   }
@@ -52,7 +52,7 @@ void SampleModelLighting(inout vec3 eval,
   int L = 0, R = global_uniform_object.num_objects;
   while (L < R) {
     int m = (L + R) / 2;
-    if (r1 <= object_sampler_infos[m].cdf) {
+    if (r1 <= entity_objects[m].cdf) {
       R = m;
     } else {
       L = m + 1;
@@ -63,15 +63,15 @@ void SampleModelLighting(inout vec3 eval,
     return;
   }
   if (object_index > 0) {
-    r1 -= object_sampler_infos[object_index - 1].cdf;
+    r1 -= entity_objects[object_index - 1].cdf;
   }
-  ObjectSamplerInfo object_sampler_info = object_sampler_infos[object_index];
-  r1 /= object_sampler_info.pdf;
+  EntityUniformObject entity_object = entity_objects[object_index];
+  r1 /= entity_object.pdf;
   L = 0;
-  R = object_sampler_info.num_primitives + 1;
+  R = entity_object.num_primitives + 1;
   while (L < R) {
     int m = (L + R) / 2;
-    if (r1 <= primitive_cdf[object_sampler_info.primitive_offset + m]) {
+    if (r1 <= primitive_cdf[entity_object.primitive_offset + m]) {
       R = m;
     } else {
       L = m + 1;
@@ -79,14 +79,14 @@ void SampleModelLighting(inout vec3 eval,
   }
   int primitive_index = L;
   if (primitive_index == 0 ||
-      primitive_index == object_sampler_info.num_primitives + 1) {
+      primitive_index == entity_object.num_primitives + 1) {
     return;
   }
   primitive_index--;
-  float lbound = primitive_cdf[object_sampler_info.primitive_offset +
-                               primitive_index],
-        rbound = primitive_cdf[object_sampler_info.primitive_offset +
-                               primitive_index + 1];
+  float lbound =
+            primitive_cdf[entity_object.primitive_offset + primitive_index],
+        rbound =
+            primitive_cdf[entity_object.primitive_offset + primitive_index + 1];
   r1 = (r1 - lbound) / (rbound - lbound);
   ObjectInfo object_info = object_infos[object_index];
   vec3 v0 = GetVertexPosition(
@@ -105,8 +105,8 @@ void SampleModelLighting(inout vec3 eval,
   }
   barycentric.z = 1.0 - barycentric.x - barycentric.y;
 
-  mat3 object_to_world = mat3(object_sampler_info.object_to_world);
-  vec3 position = vec3(object_sampler_info.object_to_world *
+  mat3 object_to_world = mat3(entity_object.object_to_world);
+  vec3 position = vec3(entity_object.object_to_world *
                        vec4(mat3(v0, v1, v2) * barycentric, 1.0));
   vec3 geometry_normal =
       normalize(transpose(inverse(object_to_world)) * cross(v1 - v0, v2 - v0));

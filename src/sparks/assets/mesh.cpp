@@ -11,8 +11,8 @@
 
 namespace sparks {
 
-Mesh::Mesh(const Mesh &mesh) : Mesh(mesh.vertices_, mesh.indices_) {
-  BuildTangent();
+Mesh::Mesh(const Mesh &mesh)
+    : vertices_(mesh.vertices_), indices_(mesh.indices_) {
 }
 
 Mesh::Mesh(const std::vector<Vertex> &vertices,
@@ -368,8 +368,8 @@ Mesh::Mesh(const tinyxml2::XMLElement *element) {
       indices_.push_back(i + 1);
       indices_.push_back(i + 2);
     }
+    BuildTangent();
   }
-  BuildTangent();
 }
 
 void Mesh::BuildTangent() {
