@@ -12,16 +12,16 @@
 
     <!--Light-->
     <model name="Light">
-        <vertex position="343.0 548.7 227.0"/>
-        <vertex position="343.0 548.7 332.0"/>
-        <vertex position="213.0 548.7 332.0"/>
-        <vertex position="213.0 548.7 227.0"/>
+        <vertex position="343.0 548.7 227.0" tex_coord="0 0"/>
+        <vertex position="343.0 548.7 332.0" tex_coord="1 0"/>
+        <vertex position="213.0 548.7 332.0" tex_coord="1 1"/>
+        <vertex position="213.0 548.7 227.0" tex_coord="0 1"/>
         <index value="0"/>
         <index value="1"/>
         <index value="3"/>
         <index value="1"/>
-        <index value="3"/>
         <index value="2"/>
+        <index value="3"/>
 
         <material type="emission">
             <emission value="1.0 1.0 1.0"/>
@@ -31,16 +31,16 @@
 
     <!--floor-->
     <model name="Floor">
-        <vertex position="552.8 0.0   0.0"/>
-        <vertex position="0.0 0.0   0.0"/>
-        <vertex position="0.0 0.0 559.2"/>
-        <vertex position="549.6 0.0 559.2"/>
+        <vertex position="552.8 0.0   0.0" tex_coord="0 0"/>
+        <vertex position="0.0 0.0   0.0" tex_coord="1 0"/>
+        <vertex position="0.0 0.0 559.2" tex_coord="1 1"/>
+        <vertex position="549.6 0.0 559.2" tex_coord="0 1"/>
         <index value="0"/>
         <index value="1"/>
         <index value="3"/>
         <index value="1"/>
-        <index value="3"/>
         <index value="2"/>
+        <index value="3"/>
 
         <material type="lambertian">
             <albedo value="0.8 0.8 0.8"/>
@@ -49,16 +49,16 @@
 
     <!--ceiling-->
     <model name="Ceiling">
-        <vertex position="556.0 548.8 0.0  "/>
-        <vertex position="556.0 548.8 559.2"/>
-        <vertex position="0.0 548.8 559.2"/>
-        <vertex position="0.0 548.8   0.0"/>
+        <vertex position="556.0 548.8 0.0  " tex_coord="0 0"/>
+        <vertex position="556.0 548.8 559.2" tex_coord="1 0"/>
+        <vertex position="0.0 548.8 559.2" tex_coord="1 1"/>
+        <vertex position="0.0 548.8   0.0" tex_coord="0 1"/>
         <index value="0"/>
         <index value="1"/>
         <index value="3"/>
         <index value="1"/>
-        <index value="3"/>
         <index value="2"/>
+        <index value="3"/>
 
         <material type="lambertian">
             <albedo value="0.8 0.8 0.8"/>
@@ -67,16 +67,16 @@
 
     <!--back wall-->
     <model name="Back Wall">
-        <vertex position="549.6   0.0 559.2"/>
-        <vertex position="0.0   0.0 559.2"/>
-        <vertex position="0.0 548.8 559.2"/>
-        <vertex position="556.0 548.8 559.2"/>
+        <vertex position="549.6   0.0 559.2" tex_coord="0 0"/>
+        <vertex position="0.0   0.0 559.2" tex_coord="1 0"/>
+        <vertex position="0.0 548.8 559.2" tex_coord="1 1"/>
+        <vertex position="556.0 548.8 559.2" tex_coord="0 1"/>
         <index value="0"/>
         <index value="1"/>
         <index value="3"/>
         <index value="1"/>
-        <index value="3"/>
         <index value="2"/>
+        <index value="3"/>
 
         <material type="lambertian">
             <albedo value="0.8 0.8 0.8"/>
@@ -85,16 +85,16 @@
 
     <!--right wall-->
     <model name="Right Wall">
-        <vertex position="0.0   0.0 559.2 "/>
-        <vertex position="0.0   0.0   0.0"/>
-        <vertex position="0.0 548.8   0.0"/>
-        <vertex position="0.0 548.8 559.2"/>
+        <vertex position="0.0   0.0 559.2 " tex_coord="0 0"/>
+        <vertex position="0.0   0.0   0.0" tex_coord="1 0"/>
+        <vertex position="0.0 548.8   0.0" tex_coord="1 1"/>
+        <vertex position="0.0 548.8 559.2" tex_coord="0 1"/>
         <index value="0"/>
         <index value="1"/>
         <index value="3"/>
         <index value="1"/>
-        <index value="3"/>
         <index value="2"/>
+        <index value="3"/>
 
         <material type="lambertian">
             <albedo value="0.0 0.8 0.0"/>
@@ -103,16 +103,16 @@
 
     <!--left wall-->
     <model name="Left Wall">
-        <vertex position="552.8   0.0   0.0 "/>
-        <vertex position="549.6   0.0 559.2"/>
-        <vertex position="556.0 548.8 559.2"/>
-        <vertex position="556.0 548.8   0.0"/>
+        <vertex position="552.8   0.0   0.0 " tex_coord="0 0"/>
+        <vertex position="549.6   0.0 559.2" tex_coord="1 0"/>
+        <vertex position="556.0 548.8 559.2" tex_coord="1 1"/>
+        <vertex position="556.0 548.8   0.0" tex_coord="0 1"/>
         <index value="0"/>
         <index value="1"/>
         <index value="3"/>
         <index value="1"/>
-        <index value="3"/>
         <index value="2"/>
+        <index value="3"/>
 
         <material type="lambertian">
             <albedo value="0.8 0.0 0.0"/>
@@ -121,61 +121,61 @@
 
     <!--short block-->
     <model name="Short Block">
-        <vertex position="130.0 165.0  65.0"/>
-        <vertex position="82.0 165.0 225.0"/>
-        <vertex position="240.0 165.0 272.0"/>
-        <vertex position="290.0 165.0 114.0"/>
+        <vertex position="130.0 165.0  65.0" tex_coord="0 0"/>
+        <vertex position="82.0 165.0 225.0" tex_coord="1 0"/>
+        <vertex position="240.0 165.0 272.0" tex_coord="1 1"/>
+        <vertex position="290.0 165.0 114.0" tex_coord="0 1"/>
 
-        <vertex position="290.0   0.0 114.0"/>
-        <vertex position="290.0 165.0 114.0"/>
-        <vertex position="240.0 165.0 272.0"/>
-        <vertex position="240.0   0.0 272.0"/>
+        <vertex position="290.0   0.0 114.0" tex_coord="0 0"/>
+        <vertex position="290.0 165.0 114.0" tex_coord="1 0"/>
+        <vertex position="240.0 165.0 272.0" tex_coord="1 1"/>
+        <vertex position="240.0   0.0 272.0" tex_coord="0 1"/>
 
-        <vertex position="130.0   0.0  65.0"/>
-        <vertex position="130.0 165.0  65.0"/>
-        <vertex position="290.0 165.0 114.0"/>
-        <vertex position="290.0   0.0 114.0"/>
+        <vertex position="130.0   0.0  65.0" tex_coord="0 0"/>
+        <vertex position="130.0 165.0  65.0" tex_coord="1 0"/>
+        <vertex position="290.0 165.0 114.0" tex_coord="1 1"/>
+        <vertex position="290.0   0.0 114.0" tex_coord="0 1"/>
 
-        <vertex position="82.0   0.0 225.0"/>
-        <vertex position="82.0 165.0 225.0"/>
-        <vertex position="130.0 165.0  65.0"/>
-        <vertex position="130.0   0.0  65.0"/>
+        <vertex position="82.0   0.0 225.0" tex_coord="0 0"/>
+        <vertex position="82.0 165.0 225.0" tex_coord="1 0"/>
+        <vertex position="130.0 165.0  65.0" tex_coord="1 1"/>
+        <vertex position="130.0   0.0  65.0" tex_coord="0 1"/>
 
-        <vertex position="240.0   0.0 272.0"/>
-        <vertex position="240.0 165.0 272.0"/>
-        <vertex position=" 82.0 165.0 225.0"/>
-        <vertex position="82.0   0.0 225.0"/>
+        <vertex position="240.0   0.0 272.0" tex_coord="0 0"/>
+        <vertex position="240.0 165.0 272.0" tex_coord="1 0"/>
+        <vertex position=" 82.0 165.0 225.0" tex_coord="1 1"/>
+        <vertex position="82.0   0.0 225.0" tex_coord="0 1"/>
 
         <index value="0"/>
         <index value="1"/>
         <index value="3"/>
         <index value="1"/>
-        <index value="3"/>
         <index value="2"/>
+        <index value="3"/>
         <index value="4"/>
         <index value="5"/>
         <index value="7"/>
         <index value="5"/>
-        <index value="7"/>
         <index value="6"/>
+        <index value="7"/>
         <index value="8"/>
         <index value="9"/>
         <index value="11"/>
         <index value="9"/>
-        <index value="11"/>
         <index value="10"/>
+        <index value="11"/>
         <index value="12"/>
         <index value="13"/>
         <index value="15"/>
         <index value="13"/>
-        <index value="15"/>
         <index value="14"/>
+        <index value="15"/>
         <index value="16"/>
         <index value="17"/>
         <index value="19"/>
         <index value="17"/>
-        <index value="19"/>
         <index value="18"/>
+        <index value="19"/>
 
         <material type="lambertian">
             <albedo value="1 1 1"/>
@@ -184,61 +184,62 @@
 
     <!--tall block-->
     <model name="Tall Block">
-        <vertex position="423.0 330.0 247.0"/>
-        <vertex position="265.0 330.0 296.0"/>
-        <vertex position="314.0 330.0 456.0"/>
-        <vertex position="472.0 330.0 406.0"/>
+        <vertex position="423.0 330.0 247.0" tex_coord="0 0"/>
+        <vertex position="265.0 330.0 296.0" tex_coord="1 0"/>
+        <vertex position="314.0 330.0 456.0" tex_coord="1 1"/>
+        <vertex position="472.0 330.0 406.0" tex_coord="0 1"/>
 
-        <vertex position="423.0   0.0 247.0"/>
-        <vertex position="423.0 330.0 247.0"/>
-        <vertex position="472.0 330.0 406.0"/>
-        <vertex position="472.0   0.0 406.0"/>
+        <vertex position="423.0   0.0 247.0" tex_coord="0 0"/>
+        <vertex position="423.0 330.0 247.0" tex_coord="1 0"/>
+        <vertex position="472.0 330.0 406.0" tex_coord="1 1"/>
+        <vertex position="472.0   0.0 406.0" tex_coord="0 1"/>
 
-        <vertex position="472.0   0.0 406.0"/>
-        <vertex position="472.0 330.0 406.0"/>
-        <vertex position="314.0 330.0 456.0"/>
-        <vertex position="314.0   0.0 456.0"/>
+        <vertex position="472.0   0.0 406.0" tex_coord="0 0"/>
+        <vertex position="472.0 330.0 406.0" tex_coord="1 0"/>
+        <vertex position="314.0 330.0 456.0" tex_coord="1 1"/>
+        <vertex position="314.0   0.0 456.0" tex_coord="0 1"/>
 
-        <vertex position="314.0   0.0 456.0"/>
-        <vertex position="314.0 330.0 456.0"/>
-        <vertex position="265.0 330.0 296.0"/>
-        <vertex position="265.0   0.0 296.0"/>
+        <vertex position="314.0   0.0 456.0" tex_coord="0 0"/>
+        <vertex position="314.0 330.0 456.0" tex_coord="1 0"/>
+        <vertex position="265.0 330.0 296.0" tex_coord="1 1"/>
+        <vertex position="265.0   0.0 296.0" tex_coord="0 1"/>
 
-        <vertex position="265.0   0.0 296.0"/>
-        <vertex position="265.0 330.0 296.0"/>
-        <vertex position="423.0 330.0 247.0"/>
-        <vertex position="423.0   0.0 247.0"/>
+        <vertex position="265.0   0.0 296.0" tex_coord="0 0"/>
+        <vertex position="265.0 330.0 296.0" tex_coord="1 0"/>
+        <vertex position="423.0 330.0 247.0" tex_coord="1 1"/>
+        <vertex position="423.0   0.0 247.0" tex_coord="0 1"/>
+
 
         <index value="0"/>
         <index value="1"/>
         <index value="3"/>
         <index value="1"/>
-        <index value="3"/>
         <index value="2"/>
+        <index value="3"/>
         <index value="4"/>
         <index value="5"/>
         <index value="7"/>
         <index value="5"/>
-        <index value="7"/>
         <index value="6"/>
+        <index value="7"/>
         <index value="8"/>
         <index value="9"/>
         <index value="11"/>
         <index value="9"/>
-        <index value="11"/>
         <index value="10"/>
+        <index value="11"/>
         <index value="12"/>
         <index value="13"/>
         <index value="15"/>
         <index value="13"/>
-        <index value="15"/>
         <index value="14"/>
+        <index value="15"/>
         <index value="16"/>
         <index value="17"/>
         <index value="19"/>
         <index value="17"/>
-        <index value="19"/>
         <index value="18"/>
+        <index value="19"/>
 
         <material type="specular">
             <albedo value="1 1 1"/>
