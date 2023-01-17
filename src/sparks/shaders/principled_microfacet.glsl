@@ -250,6 +250,17 @@ void bsdf_microfacet_ggx_refraction_setup(inout MicrofacetBsdf bsdf) {
   bsdf.type = CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID;
 }
 
+void bsdf_microfacet_ggx_clearcoat_setup(inout MicrofacetBsdf bsdf) {
+  bsdf.cspec0 = saturate(bsdf.cspec0);
+
+  bsdf.alpha_x = saturatef(bsdf.alpha_x);
+  bsdf.alpha_y = bsdf.alpha_x;
+
+  bsdf.type = CLOSURE_BSDF_MICROFACET_GGX_CLEARCOAT_ID;
+
+  bsdf_microfacet_fresnel_color(bsdf);
+}
+
 Spectrum bsdf_microfacet_ggx_eval_reflect(const MicrofacetBsdf bsdf,
                                           const float3 N,
                                           const float3 I,
