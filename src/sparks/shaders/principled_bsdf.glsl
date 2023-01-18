@@ -314,7 +314,7 @@ vec3 EvalPrincipledBSDFKernel(in vec3 omega_in,
   return eval /= accum_weight;
 }
 
-vec3 EvalPrincipledBSDFCore(in vec3 omega_in, out float pdf) {
+vec3 EvalPrincipledBSDF(in vec3 omega_in, out float pdf) {
   CalculateClosureWeight(
       hit_record.base_color, hit_record.subsurface_color, hit_record.subsurface,
       hit_record.subsurface_radius, hit_record.metallic, hit_record.specular,
@@ -322,17 +322,11 @@ vec3 EvalPrincipledBSDFCore(in vec3 omega_in, out float pdf) {
       hit_record.anisotropic_rotation, hit_record.sheen, hit_record.sheen_tint,
       hit_record.clearcoat, hit_record.clearcoat_roughness, hit_record.ior,
       hit_record.transmission, hit_record.transmission_roughness);
-  //  CalculateClosureWeight(base_color, subsurface_color, subsurface,
-  //                         subsurface_radius, metallic, specular,
-  //                         specular_tint, roughness, anisotropic,
-  //                         anisotropic_rotation, sheen, sheen_tint, clearcoat,
-  //                         clearcoat_roughness, ior, transmission,
-  //                         transmission_roughness);
   pdf = 0.0;
   return EvalPrincipledBSDFKernel(omega_in, pdf, vec3(0.0), 0.0, -1);
 }
 
-void SamplePrincipledBSDFCore(out vec3 eval, out vec3 omega_in, out float pdf) {
+void SamplePrincipledBSDF(out vec3 eval, out vec3 omega_in, out float pdf) {
   eval = vec3(0);
   omega_in = vec3(0);
   pdf = 0.0;
@@ -348,12 +342,6 @@ void SamplePrincipledBSDFCore(out vec3 eval, out vec3 omega_in, out float pdf) {
       hit_record.anisotropic_rotation, hit_record.sheen, hit_record.sheen_tint,
       hit_record.clearcoat, hit_record.clearcoat_roughness, hit_record.ior,
       hit_record.transmission, hit_record.transmission_roughness);
-  //  CalculateClosureWeight(base_color, subsurface_color, subsurface,
-  //                         subsurface_radius, metallic, specular,
-  //                         specular_tint, roughness, anisotropic,
-  //                         anisotropic_rotation, sheen, sheen_tint, clearcoat,
-  //                         clearcoat_roughness, ior, transmission,
-  //                         transmission_roughness);
   float weight_cdf[CLOSURE_COUNT];
   float total_cdf;
   weight_cdf[0] = diffuse_closure.sample_weight;
@@ -437,14 +425,6 @@ void SamplePrincipledBSDFCore(out vec3 eval, out vec3 omega_in, out float pdf) {
     accum_weight = sheen_closure.sample_weight;
   }
   eval = EvalPrincipledBSDFKernel(omega_in, pdf, eval, accum_weight, exclude);
-}
-
-vec3 EvalPrincipledBSDF(in vec3 L, out float pdf) {
-  return EvalPrincipledBSDFCore(L, pdf);
-}
-
-void SamplePrincipledBSDF(out vec3 eval, out vec3 omega_in, out float pdf) {
-  SamplePrincipledBSDFCore(eval, omega_in, pdf);
 }
 
 #endif
