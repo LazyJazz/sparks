@@ -39,6 +39,25 @@ Material::Material(Scene *scene, const tinyxml2::XMLElement *material_element)
     }
   }
 
+#define FLOAT_TERM(x)                                              \
+  child_element = material_element->FirstChildElement(#x);         \
+  if (child_element) {                                             \
+    x = std::stof(child_element->FindAttribute("value")->Value()); \
+  }
+  FLOAT_TERM(metallic);
+  FLOAT_TERM(specular);
+  FLOAT_TERM(specular_tint);
+  FLOAT_TERM(roughness);
+  FLOAT_TERM(anisotropic);
+  FLOAT_TERM(anisotropic_rotation);
+  FLOAT_TERM(sheen);
+  FLOAT_TERM(sheen_tint);
+  FLOAT_TERM(clearcoat);
+  FLOAT_TERM(clearcoat_roughness);
+  FLOAT_TERM(ior);
+  FLOAT_TERM(transmission);
+  FLOAT_TERM(transmission_roughness);
+
   child_element = material_element->FirstChildElement("emission");
   if (child_element) {
     emission = StringToVec3(child_element->FindAttribute("value")->Value());

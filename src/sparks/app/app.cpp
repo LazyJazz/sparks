@@ -508,6 +508,9 @@ void App::UpdateImGui() {
     reset_accumulation_ |= envmap_require_configure_;
     reset_accumulation_ |= ImGui::SliderAngle(
         "Offset", &scene.GetEnvmapOffset(), 0.0f, 360.0f, "%.0f deg");
+    reset_accumulation_ |= ImGui::SliderFloat(
+        "Envmap Scale", &renderer_->GetRendererSettings().envmap_scale, 0.0f,
+        10.0f);
 
     if (selected_entity_id_ != -1) {
       ImGui::NewLine();
@@ -743,6 +746,8 @@ void App::UpdateDynamicBuffer() {
   global_uniform_object.gamma = camera.GetGamma();
   global_uniform_object.aspect = float(core_->GetFramebufferWidth()) /
                                  float(core_->GetFramebufferHeight());
+  global_uniform_object.envmap_scale =
+      renderer_->GetRendererSettings().envmap_scale;
 
   global_uniform_buffer_->operator[](0) = global_uniform_object;
   global_uniform_object.projection =
