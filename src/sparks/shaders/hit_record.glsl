@@ -47,7 +47,40 @@ struct HitRecord {
 
 HitRecord GetHitRecord(RayPayload ray_payload, vec3 origin, vec3 direction) {
   HitRecord hit_record;
+  hit_record.hit_entity_id = 0;
+  hit_record.position = vec3(0);
+  hit_record.normal = vec3(0);
+  hit_record.shading_normal = vec3(0);
+  hit_record.geometry_normal = vec3(0);
+  hit_record.tangent = vec3(0);
+  hit_record.bitangent = vec3(0);
+  hit_record.tex_coord = vec2(0);
+  hit_record.front_face = true;
+  hit_record.base_color = vec3(0);
   hit_record.omega_v = -direction;
+
+  hit_record.subsurface_color = vec3(1.0);
+  hit_record.subsurface = 0.0;
+  hit_record.subsurface_radius = vec3(1.0);
+  hit_record.metallic = 0.0;
+  hit_record.specular = 0.0;
+  hit_record.specular_tint = 0.0;
+  hit_record.roughness = 0.0;
+  hit_record.anisotropic = 0.0;
+  hit_record.anisotropic_rotation = 0.0;
+  hit_record.sheen = 0.0;
+  hit_record.sheen_tint = 0.0;
+  hit_record.clearcoat = 0.0;
+  hit_record.clearcoat_roughness = 0.0;
+  hit_record.ior = 1.0;
+  hit_record.transmission = 0.0;
+  hit_record.transmission_roughness = 0.0;
+
+  hit_record.emission = vec3(0);
+  hit_record.emission_strength = 0.0;
+  hit_record.alpha = 1.0;
+  hit_record.material_type = 0;
+
   ObjectInfo object_info = object_infos[ray_payload.object_id];
   Vertex v0 = GetVertex(
       object_info.vertex_offset +
