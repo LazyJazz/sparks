@@ -53,15 +53,7 @@ vec3 EvalBSDF(in vec3 L, out float pdf) {
     case MATERIAL_TYPE_LAMBERTIAN:
       return EvalLambertianBSDF(L, pdf);
     case MATERIAL_TYPE_PRINCIPLED:
-      return EvalPrincipledBSDF(
-          L, pdf, hit_record.base_color, hit_record.subsurface_color,
-          hit_record.subsurface, hit_record.subsurface_radius,
-          hit_record.metallic, hit_record.specular, hit_record.specular_tint,
-          hit_record.roughness, hit_record.anisotropic,
-          hit_record.anisotropic_rotation, hit_record.sheen,
-          hit_record.sheen_tint, hit_record.clearcoat,
-          hit_record.clearcoat_roughness, hit_record.ior,
-          hit_record.transmission, hit_record.transmission_roughness);
+      return EvalPrincipledBSDF(L, pdf);
     default:
       pdf = 0.0f;
       return vec3(0);
@@ -77,15 +69,7 @@ void SampleBSDF(out vec3 eval, out vec3 L, out float pdf) {
       SampleLambertianBSDF(eval, L, pdf);
       return;
     case MATERIAL_TYPE_PRINCIPLED:
-      SamplePrincipledBSDF(
-          eval, L, pdf, hit_record.base_color, hit_record.subsurface_color,
-          hit_record.subsurface, hit_record.subsurface_radius,
-          hit_record.metallic, hit_record.specular, hit_record.specular_tint,
-          hit_record.roughness, hit_record.anisotropic,
-          hit_record.anisotropic_rotation, hit_record.sheen,
-          hit_record.sheen_tint, hit_record.clearcoat,
-          hit_record.clearcoat_roughness, hit_record.ior,
-          hit_record.transmission, hit_record.transmission_roughness);
+      SamplePrincipledBSDF(eval, L, pdf);
       return;
     default:
       pdf = 0.0;

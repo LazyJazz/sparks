@@ -47,10 +47,29 @@ void CalculateClosureWeight(vec3 base_color,
                             float ior,
                             float transmission,
                             float transmission_roughness) {
+  diffuse_closure.weight = vec3(0);
   diffuse_closure.sample_weight = 0.0;
+  diffuse_closure.N = vec3(0);
+  diffuse_closure.roughness = 0.0;
+  microfacet_closure.weight = vec3(0);
   microfacet_closure.sample_weight = 0.0;
-  microfacet_bsdf_reflect_closure.sample_weight = 0.0;
-  microfacet_bsdf_refract_closure.sample_weight = 0.0;
+  microfacet_closure.N = vec3(0);
+  microfacet_closure.alpha_x = 0.0;
+  microfacet_closure.alpha_y = 0.0;
+  microfacet_closure.ior = 1.0;
+  microfacet_closure.T = vec3(0);
+  microfacet_closure.color = vec3(0);
+  microfacet_closure.cspec0 = vec3(0);
+  microfacet_closure.fresnel_color = vec3(0);
+  microfacet_closure.clearcoat = 0.0;
+  microfacet_closure.type = 0;
+  microfacet_bsdf_reflect_closure = microfacet_bsdf_refract_closure =
+      microfacet_clearcoat_closure = microfacet_closure;
+  sheen_closure.weight = vec3(0);
+  sheen_closure.sample_weight = 0.0;
+  sheen_closure.N = vec3(0);
+  sheen_closure.avg_value = 0.0;
+
   const vec3 Ng = hit_record.geometry_normal;
   const vec3 N = hit_record.normal;
   const vec3 V = hit_record.omega_v;
@@ -295,73 +314,33 @@ vec3 EvalPrincipledBSDFKernel(in vec3 omega_in,
   return eval /= accum_weight;
 }
 
-vec3 EvalPrincipledBSDF(in vec3 omega_in,
-                        out float pdf,
-                        vec3 base_color,
-
-                        vec3 subsurface_color,
-                        float subsurface,
-
-                        vec3 subsurface_radius,
-                        float metallic,
-
-                        float specular,
-                        float specular_tint,
-                        float roughness,
-                        float anisotropic,
-
-                        float anisotropic_rotation,
-                        float sheen,
-                        float sheen_tint,
-                        float clearcoat,
-
-                        float clearcoat_roughness,
-                        float ior,
-                        float transmission,
-                        float transmission_roughness) {
-  CalculateClosureWeight(base_color, subsurface_color, subsurface,
-                         subsurface_radius, metallic, specular, specular_tint,
-                         roughness, anisotropic, anisotropic_rotation, sheen,
-                         sheen_tint, clearcoat, clearcoat_roughness, ior,
-                         transmission, transmission_roughness);
+vec3 EvalPrincipledBSDF(in vec3 omega_in, out float pdf) {
+  CalculateClosureWeight(
+      hit_record.base_color, hit_record.subsurface_color, hit_record.subsurface,
+      hit_record.subsurface_radius, hit_record.metallic, hit_record.specular,
+      hit_record.specular_tint, hit_record.roughness, hit_record.anisotropic,
+      hit_record.anisotropic_rotation, hit_record.sheen, hit_record.sheen_tint,
+      hit_record.clearcoat, hit_record.clearcoat_roughness, hit_record.ior,
+      hit_record.transmission, hit_record.transmission_roughness);
   pdf = 0.0;
   return EvalPrincipledBSDFKernel(omega_in, pdf, vec3(0.0), 0.0, -1);
 }
 
-void SamplePrincipledBSDF(out vec3 eval,
-                          out vec3 omega_in,
-                          out float pdf,
-                          vec3 base_color,
-
-                          vec3 subsurface_color,
-                          float subsurface,
-
-                          vec3 subsurface_radius,
-                          float metallic,
-
-                          float specular,
-                          float specular_tint,
-                          float roughness,
-                          float anisotropic,
-
-                          float anisotropic_rotation,
-                          float sheen,
-                          float sheen_tint,
-                          float clearcoat,
-
-                          float clearcoat_roughness,
-                          float ior,
-                          float transmission,
-                          float transmission_roughness) {
+void SamplePrincipledBSDF(out vec3 eval, out vec3 omega_in, out float pdf) {
+  eval = vec3(0);
+  omega_in = vec3(0);
+  pdf = 0.0;
   const vec3 Ng = hit_record.geometry_normal;
   const vec3 N = hit_record.normal;
-  const vec3 V = hit_record.omega_v;
   const vec3 I = hit_record.omega_v;
-  CalculateClosureWeight(base_color, subsurface_color, subsurface,
-                         subsurface_radius, metallic, specular, specular_tint,
-                         roughness, anisotropic, anisotropic_rotation, sheen,
-                         sheen_tint, clearcoat, clearcoat_roughness, ior,
-                         transmission, transmission_roughness);
+
+  CalculateClosureWeight(
+      hit_record.base_color, hit_record.subsurface_color, hit_record.subsurface,
+      hit_record.subsurface_radius, hit_record.metallic, hit_record.specular,
+      hit_record.specular_tint, hit_record.roughness, hit_record.anisotropic,
+      hit_record.anisotropic_rotation, hit_record.sheen, hit_record.sheen_tint,
+      hit_record.clearcoat, hit_record.clearcoat_roughness, hit_record.ior,
+      hit_record.transmission, hit_record.transmission_roughness);
   float weight_cdf[CLOSURE_COUNT];
   float total_cdf;
   weight_cdf[0] = diffuse_closure.sample_weight;
@@ -390,9 +369,8 @@ void SamplePrincipledBSDF(out vec3 eval,
     r1 /= weight_cdf[1] - weight_cdf[0];
     vec2 sampled_roughness;
     float eta;
-    bsdf_microfacet_ggx_sample(microfacet_closure, hit_record.geometry_normal,
-                               hit_record.omega_v, r1, r2, eval, omega_in, pdf,
-                               sampled_roughness, eta);
+    bsdf_microfacet_ggx_sample(microfacet_closure, N, I, r1, r2, eval, omega_in,
+                               pdf, sampled_roughness, eta);
     eval *= microfacet_closure.weight;
     exclude = 1;
     accum_weight = microfacet_closure.sample_weight;
@@ -401,10 +379,8 @@ void SamplePrincipledBSDF(out vec3 eval,
     r1 /= weight_cdf[2] - weight_cdf[1];
     vec2 sampled_roughness;
     float eta;
-    bsdf_microfacet_ggx_sample(microfacet_bsdf_reflect_closure,
-                               hit_record.geometry_normal, hit_record.omega_v,
-                               r1, r2, eval, omega_in, pdf, sampled_roughness,
-                               eta);
+    bsdf_microfacet_ggx_sample(microfacet_bsdf_reflect_closure, N, I, r1, r2,
+                               eval, omega_in, pdf, sampled_roughness, eta);
     eval *= microfacet_bsdf_reflect_closure.weight;
     exclude = 2;
     accum_weight = microfacet_bsdf_reflect_closure.sample_weight;
@@ -413,10 +389,8 @@ void SamplePrincipledBSDF(out vec3 eval,
     r1 /= weight_cdf[3] - weight_cdf[2];
     vec2 sampled_roughness;
     float eta;
-    bsdf_microfacet_ggx_sample(microfacet_bsdf_refract_closure,
-                               hit_record.geometry_normal, hit_record.omega_v,
-                               r1, r2, eval, omega_in, pdf, sampled_roughness,
-                               eta);
+    bsdf_microfacet_ggx_sample(microfacet_bsdf_refract_closure, N, I, r1, r2,
+                               eval, omega_in, pdf, sampled_roughness, eta);
     eval *= microfacet_bsdf_refract_closure.weight;
     exclude = 3;
     accum_weight = microfacet_bsdf_refract_closure.sample_weight;
@@ -425,10 +399,8 @@ void SamplePrincipledBSDF(out vec3 eval,
     r1 /= weight_cdf[4] - weight_cdf[3];
     vec2 sampled_roughness;
     float eta;
-    bsdf_microfacet_ggx_sample(microfacet_clearcoat_closure,
-                               hit_record.geometry_normal, hit_record.omega_v,
-                               r1, r2, eval, omega_in, pdf, sampled_roughness,
-                               eta);
+    bsdf_microfacet_ggx_sample(microfacet_clearcoat_closure, N, I, r1, r2, eval,
+                               omega_in, pdf, sampled_roughness, eta);
     eval *= microfacet_clearcoat_closure.weight;
     exclude = 4;
     accum_weight = microfacet_clearcoat_closure.sample_weight;
@@ -437,8 +409,7 @@ void SamplePrincipledBSDF(out vec3 eval,
     r1 /= weight_cdf[5] - weight_cdf[4];
     vec2 sampled_roughness;
     float eta;
-    bsdf_principled_sheen_sample(sheen_closure, hit_record.geometry_normal,
-                                 hit_record.omega_v, r1, r2, eval, omega_in,
+    bsdf_principled_sheen_sample(sheen_closure, N, I, r1, r2, eval, omega_in,
                                  pdf);
     eval *= sheen_closure.weight;
     exclude = 5;
