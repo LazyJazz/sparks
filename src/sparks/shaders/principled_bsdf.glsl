@@ -332,7 +332,6 @@ void SamplePrincipledBSDF(out vec3 eval, out vec3 omega_in, out float pdf) {
   pdf = 0.0;
   const vec3 Ng = hit_record.geometry_normal;
   const vec3 N = hit_record.normal;
-  const vec3 V = hit_record.omega_v;
   const vec3 I = hit_record.omega_v;
 
   CalculateClosureWeight(
@@ -370,9 +369,8 @@ void SamplePrincipledBSDF(out vec3 eval, out vec3 omega_in, out float pdf) {
     r1 /= weight_cdf[1] - weight_cdf[0];
     vec2 sampled_roughness;
     float eta;
-    bsdf_microfacet_ggx_sample(microfacet_closure, hit_record.geometry_normal,
-                               hit_record.omega_v, r1, r2, eval, omega_in, pdf,
-                               sampled_roughness, eta);
+    bsdf_microfacet_ggx_sample(microfacet_closure, N, I, r1, r2, eval, omega_in,
+                               pdf, sampled_roughness, eta);
     eval *= microfacet_closure.weight;
     exclude = 1;
     accum_weight = microfacet_closure.sample_weight;
@@ -381,10 +379,8 @@ void SamplePrincipledBSDF(out vec3 eval, out vec3 omega_in, out float pdf) {
     r1 /= weight_cdf[2] - weight_cdf[1];
     vec2 sampled_roughness;
     float eta;
-    bsdf_microfacet_ggx_sample(microfacet_bsdf_reflect_closure,
-                               hit_record.geometry_normal, hit_record.omega_v,
-                               r1, r2, eval, omega_in, pdf, sampled_roughness,
-                               eta);
+    bsdf_microfacet_ggx_sample(microfacet_bsdf_reflect_closure, N, I, r1, r2,
+                               eval, omega_in, pdf, sampled_roughness, eta);
     eval *= microfacet_bsdf_reflect_closure.weight;
     exclude = 2;
     accum_weight = microfacet_bsdf_reflect_closure.sample_weight;
@@ -393,10 +389,8 @@ void SamplePrincipledBSDF(out vec3 eval, out vec3 omega_in, out float pdf) {
     r1 /= weight_cdf[3] - weight_cdf[2];
     vec2 sampled_roughness;
     float eta;
-    bsdf_microfacet_ggx_sample(microfacet_bsdf_refract_closure,
-                               hit_record.geometry_normal, hit_record.omega_v,
-                               r1, r2, eval, omega_in, pdf, sampled_roughness,
-                               eta);
+    bsdf_microfacet_ggx_sample(microfacet_bsdf_refract_closure, N, I, r1, r2,
+                               eval, omega_in, pdf, sampled_roughness, eta);
     eval *= microfacet_bsdf_refract_closure.weight;
     exclude = 3;
     accum_weight = microfacet_bsdf_refract_closure.sample_weight;
@@ -405,10 +399,8 @@ void SamplePrincipledBSDF(out vec3 eval, out vec3 omega_in, out float pdf) {
     r1 /= weight_cdf[4] - weight_cdf[3];
     vec2 sampled_roughness;
     float eta;
-    bsdf_microfacet_ggx_sample(microfacet_clearcoat_closure,
-                               hit_record.geometry_normal, hit_record.omega_v,
-                               r1, r2, eval, omega_in, pdf, sampled_roughness,
-                               eta);
+    bsdf_microfacet_ggx_sample(microfacet_clearcoat_closure, N, I, r1, r2, eval,
+                               omega_in, pdf, sampled_roughness, eta);
     eval *= microfacet_clearcoat_closure.weight;
     exclude = 4;
     accum_weight = microfacet_clearcoat_closure.sample_weight;
@@ -417,8 +409,7 @@ void SamplePrincipledBSDF(out vec3 eval, out vec3 omega_in, out float pdf) {
     r1 /= weight_cdf[5] - weight_cdf[4];
     vec2 sampled_roughness;
     float eta;
-    bsdf_principled_sheen_sample(sheen_closure, hit_record.geometry_normal,
-                                 hit_record.omega_v, r1, r2, eval, omega_in,
+    bsdf_principled_sheen_sample(sheen_closure, N, I, r1, r2, eval, omega_in,
                                  pdf);
     eval *= sheen_closure.weight;
     exclude = 5;
