@@ -241,60 +241,47 @@ vec3 EvalPrincipledBSDFKernel(in vec3 omega_in,
                               int exclude) {
   if (exclude != 0 && diffuse_closure.sample_weight >= CLOSURE_WEIGHT_CUTOFF) {
     float local_pdf;
-    vec3 local_eval =
-        bsdf_principled_diffuse_eval(diffuse_closure, hit_record.omega_v,
-                                     omega_in, local_pdf) *
-        diffuse_closure.weight * diffuse_closure.sample_weight;
+    eval += bsdf_principled_diffuse_eval(diffuse_closure, hit_record.omega_v,
+                                         omega_in, local_pdf) *
+            diffuse_closure.weight;
     pdf += local_pdf * diffuse_closure.sample_weight;
-    eval += local_eval * diffuse_closure.sample_weight;
     accum_weight += diffuse_closure.sample_weight;
   }
   if (exclude != 1 &&
       microfacet_closure.sample_weight >= CLOSURE_WEIGHT_CUTOFF) {
     float local_pdf;
-    vec3 local_eval =
-        bsdf_microfacet_ggx_eval(microfacet_closure, hit_record.omega_v,
-                                 omega_in, local_pdf) *
-        microfacet_closure.weight * microfacet_closure.sample_weight;
+    eval += bsdf_microfacet_ggx_eval(microfacet_closure, hit_record.omega_v,
+                                     omega_in, local_pdf) *
+            microfacet_closure.weight;
     pdf += local_pdf * microfacet_closure.sample_weight;
-    eval += local_eval * microfacet_closure.sample_weight;
     accum_weight += microfacet_closure.sample_weight;
   }
   if (exclude != 2 &&
       microfacet_bsdf_reflect_closure.sample_weight >= CLOSURE_WEIGHT_CUTOFF) {
     float local_pdf;
-    vec3 local_eval =
-        bsdf_microfacet_ggx_eval(microfacet_bsdf_reflect_closure,
-                                 hit_record.omega_v, omega_in, local_pdf) *
-        microfacet_bsdf_reflect_closure.weight *
-        microfacet_bsdf_reflect_closure.sample_weight;
+    eval += bsdf_microfacet_ggx_eval(microfacet_bsdf_reflect_closure,
+                                     hit_record.omega_v, omega_in, local_pdf) *
+            microfacet_bsdf_reflect_closure.weight;
     pdf += local_pdf * microfacet_bsdf_reflect_closure.sample_weight;
-    eval += local_eval * microfacet_bsdf_reflect_closure.sample_weight;
     accum_weight += microfacet_bsdf_reflect_closure.sample_weight;
   }
 
   if (exclude != 3 &&
       microfacet_bsdf_refract_closure.sample_weight >= CLOSURE_WEIGHT_CUTOFF) {
     float local_pdf;
-    vec3 local_eval =
-        bsdf_microfacet_ggx_eval(microfacet_bsdf_refract_closure,
-                                 hit_record.omega_v, omega_in, local_pdf) *
-        microfacet_bsdf_refract_closure.weight *
-        microfacet_bsdf_refract_closure.sample_weight;
+    eval += bsdf_microfacet_ggx_eval(microfacet_bsdf_refract_closure,
+                                     hit_record.omega_v, omega_in, local_pdf) *
+            microfacet_bsdf_refract_closure.weight;
     pdf += local_pdf * microfacet_bsdf_refract_closure.sample_weight;
-    eval += local_eval * microfacet_bsdf_refract_closure.sample_weight;
     accum_weight += microfacet_bsdf_refract_closure.sample_weight;
   }
   if (exclude != 4 &&
       microfacet_clearcoat_closure.sample_weight >= CLOSURE_WEIGHT_CUTOFF) {
     float local_pdf;
-    vec3 local_eval =
-        bsdf_microfacet_ggx_eval(microfacet_clearcoat_closure,
-                                 hit_record.omega_v, omega_in, local_pdf) *
-        microfacet_clearcoat_closure.weight *
-        microfacet_clearcoat_closure.sample_weight;
+    eval += bsdf_microfacet_ggx_eval(microfacet_clearcoat_closure,
+                                     hit_record.omega_v, omega_in, local_pdf) *
+            microfacet_clearcoat_closure.weight;
     pdf += local_pdf * microfacet_clearcoat_closure.sample_weight;
-    eval += local_eval * microfacet_clearcoat_closure.sample_weight;
     accum_weight += microfacet_clearcoat_closure.sample_weight;
   }
   if (exclude != 5 && sheen_closure.sample_weight >= CLOSURE_WEIGHT_CUTOFF) {
@@ -302,16 +289,17 @@ vec3 EvalPrincipledBSDFKernel(in vec3 omega_in,
     vec3 local_eval =
         bsdf_principled_sheen_eval(sheen_closure, hit_record.omega_v, omega_in,
                                    local_pdf) *
-        sheen_closure.weight * sheen_closure.sample_weight;
+        sheen_closure.weight;
     pdf += local_pdf * sheen_closure.sample_weight;
-    eval += local_eval * sheen_closure.sample_weight;
+    eval += local_eval;
     accum_weight += sheen_closure.sample_weight;
   }
   if (accum_weight < CLOSURE_WEIGHT_CUTOFF) {
+    pdf = 0.0;
     return eval;
   }
   pdf /= accum_weight;
-  return eval /= accum_weight;
+  return eval;
 }
 
 vec3 EvalPrincipledBSDF(in vec3 omega_in, out float pdf) {
@@ -415,6 +403,7 @@ void SamplePrincipledBSDF(out vec3 eval, out vec3 omega_in, out float pdf) {
     exclude = 5;
     accum_weight = sheen_closure.sample_weight;
   }
+  pdf *= accum_weight;
   eval = EvalPrincipledBSDFKernel(omega_in, pdf, eval, accum_weight, exclude);
 }
 
