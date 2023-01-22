@@ -19,43 +19,6 @@
 #define CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID 2
 #define CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID 3
 
-struct MicrofacetBsdf {
-  Spectrum weight;
-  float sample_weight;
-  float3 N;
-  float alpha_x, alpha_y, ior;
-  float3 T;
-  Spectrum color, cspec0;
-  Spectrum fresnel_color;
-  float clearcoat;
-  int type;
-};
-
-void bsdf_microfacet_fresnel_color(inout MicrofacetBsdf bsdf) {
-  float F0 = fresnel_dielectric_cos(1.0f, bsdf.ior);
-  bsdf.fresnel_color = interpolate_fresnel_color(hit_record.omega_v, bsdf.N,
-                                                 bsdf.ior, F0, bsdf.cspec0);
-
-  if (bsdf.type == CLOSURE_BSDF_MICROFACET_GGX_CLEARCOAT_ID) {
-    bsdf.fresnel_color *= 0.25f * bsdf.clearcoat;
-  }
-
-  bsdf.sample_weight *= average(bsdf.fresnel_color);
-}
-
-Spectrum reflection_color(const MicrofacetBsdf bsdf, float3 L, float3 H) {
-  Spectrum F = vec3(1);
-  bool use_fresnel = (bsdf.type == CLOSURE_BSDF_MICROFACET_GGX_FRESNEL_ID ||
-                      bsdf.type == CLOSURE_BSDF_MICROFACET_GGX_CLEARCOAT_ID);
-  if (use_fresnel) {
-    float F0 = fresnel_dielectric_cos(1.0f, bsdf.ior);
-
-    F = interpolate_fresnel_color(L, H, bsdf.ior, F0, bsdf.cspec0);
-  }
-
-  return F;
-}
-
 void microfacet_beckmann_sample_slopes(const float cos_theta_i,
                                        const float sin_theta_i,
                                        float randu,

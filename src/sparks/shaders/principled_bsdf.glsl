@@ -22,10 +22,10 @@
 
 #define CLOSURE_COUNT 6
 PrincipledDiffuseBsdf diffuse_closure;
-MicrofacetBsdf microfacet_closure;
-MicrofacetBsdf microfacet_bsdf_reflect_closure;
-MicrofacetBsdf microfacet_bsdf_refract_closure;
-MicrofacetBsdf microfacet_clearcoat_closure;
+FresnelBsdf microfacet_closure;
+FresnelBsdf microfacet_bsdf_reflect_closure;
+RefractionBsdf microfacet_bsdf_refract_closure;
+ClearcoatBsdf microfacet_clearcoat_closure;
 PrincipledSheenBsdf sheen_closure;
 
 void CalculateClosureWeight(vec3 base_color,
@@ -66,8 +66,46 @@ void CalculateClosureWeight(vec3 base_color,
   microfacet_closure.fresnel_color = vec3(0);
   microfacet_closure.clearcoat = 0.0;
   microfacet_closure.type = 0;
-  microfacet_bsdf_reflect_closure = microfacet_bsdf_refract_closure =
-      microfacet_clearcoat_closure = microfacet_closure;
+
+  microfacet_bsdf_reflect_closure.weight = vec3(0);
+  microfacet_bsdf_reflect_closure.sample_weight = 0.0;
+  microfacet_bsdf_reflect_closure.N = vec3(0);
+  microfacet_bsdf_reflect_closure.alpha_x = 0.0;
+  microfacet_bsdf_reflect_closure.alpha_y = 0.0;
+  microfacet_bsdf_reflect_closure.ior = 1.0;
+  microfacet_bsdf_reflect_closure.T = vec3(0);
+  microfacet_bsdf_reflect_closure.color = vec3(0);
+  microfacet_bsdf_reflect_closure.cspec0 = vec3(0);
+  microfacet_bsdf_reflect_closure.fresnel_color = vec3(0);
+  microfacet_bsdf_reflect_closure.clearcoat = 0.0;
+  microfacet_bsdf_reflect_closure.type = 0;
+
+  microfacet_bsdf_refract_closure.weight = vec3(0);
+  microfacet_bsdf_refract_closure.sample_weight = 0.0;
+  microfacet_bsdf_refract_closure.N = vec3(0);
+  microfacet_bsdf_refract_closure.alpha_x = 0.0;
+  microfacet_bsdf_refract_closure.alpha_y = 0.0;
+  microfacet_bsdf_refract_closure.ior = 1.0;
+  microfacet_bsdf_refract_closure.T = vec3(0);
+  microfacet_bsdf_refract_closure.color = vec3(0);
+  microfacet_bsdf_refract_closure.cspec0 = vec3(0);
+  microfacet_bsdf_refract_closure.fresnel_color = vec3(0);
+  microfacet_bsdf_refract_closure.clearcoat = 0.0;
+  microfacet_bsdf_refract_closure.type = 0;
+
+  microfacet_clearcoat_closure.weight = vec3(0);
+  microfacet_clearcoat_closure.sample_weight = 0.0;
+  microfacet_clearcoat_closure.N = vec3(0);
+  microfacet_clearcoat_closure.alpha_x = 0.0;
+  microfacet_clearcoat_closure.alpha_y = 0.0;
+  microfacet_clearcoat_closure.ior = 1.0;
+  microfacet_clearcoat_closure.T = vec3(0);
+  microfacet_clearcoat_closure.color = vec3(0);
+  microfacet_clearcoat_closure.cspec0 = vec3(0);
+  microfacet_clearcoat_closure.fresnel_color = vec3(0);
+  microfacet_clearcoat_closure.clearcoat = 0.0;
+  microfacet_clearcoat_closure.type = 0;
+
   sheen_closure.weight = vec3(0);
   sheen_closure.sample_weight = 0.0;
   sheen_closure.N = vec3(0);

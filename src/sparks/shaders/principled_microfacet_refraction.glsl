@@ -20,7 +20,44 @@
 #define CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID 2
 #define CLOSURE_BSDF_MICROFACET_GGX_GLASS_ID 3
 
-void bsdf_microfacet_ggx_refraction_setup(inout MicrofacetBsdf bsdf) {
+struct RefractionBsdf {
+  Spectrum weight;
+  float sample_weight;
+  float3 N;
+  float alpha_x, alpha_y, ior;
+  float3 T;
+  Spectrum color, cspec0;
+  Spectrum fresnel_color;
+  float clearcoat;
+  int type;
+};
+
+void bsdf_microfacet_fresnel_color(inout RefractionBsdf bsdf) {
+  float F0 = fresnel_dielectric_cos(1.0f, bsdf.ior);
+  bsdf.fresnel_color = interpolate_fresnel_color(hit_record.omega_v, bsdf.N,
+                                                 bsdf.ior, F0, bsdf.cspec0);
+
+  if (bsdf.type == CLOSURE_BSDF_MICROFACET_GGX_CLEARCOAT_ID) {
+    bsdf.fresnel_color *= 0.25f * bsdf.clearcoat;
+  }
+
+  bsdf.sample_weight *= average(bsdf.fresnel_color);
+}
+
+Spectrum reflection_color(const RefractionBsdf bsdf, float3 L, float3 H) {
+  Spectrum F = vec3(1);
+  bool use_fresnel = (bsdf.type == CLOSURE_BSDF_MICROFACET_GGX_FRESNEL_ID ||
+                      bsdf.type == CLOSURE_BSDF_MICROFACET_GGX_CLEARCOAT_ID);
+  if (use_fresnel) {
+    float F0 = fresnel_dielectric_cos(1.0f, bsdf.ior);
+
+    F = interpolate_fresnel_color(L, H, bsdf.ior, F0, bsdf.cspec0);
+  }
+
+  return F;
+}
+
+void bsdf_microfacet_ggx_refraction_setup(inout RefractionBsdf bsdf) {
   bsdf.clearcoat = 0.0;
   bsdf.fresnel_color = vec3(0);
   bsdf.color = vec3(0);
@@ -31,7 +68,7 @@ void bsdf_microfacet_ggx_refraction_setup(inout MicrofacetBsdf bsdf) {
   bsdf.type = CLOSURE_BSDF_MICROFACET_GGX_REFRACTION_ID;
 }
 
-Spectrum bsdf_microfacet_ggx_eval_reflect_refraction(const MicrofacetBsdf bsdf,
+Spectrum bsdf_microfacet_ggx_eval_reflect_refraction(const RefractionBsdf bsdf,
                                                      const float3 N,
                                                      const float3 I,
                                                      const float3 omega_in,
@@ -139,7 +176,7 @@ Spectrum bsdf_microfacet_ggx_eval_reflect_refraction(const MicrofacetBsdf bsdf,
   return out_;
 }
 
-Spectrum bsdf_microfacet_ggx_eval_transmit_refraction(const MicrofacetBsdf bsdf,
+Spectrum bsdf_microfacet_ggx_eval_transmit_refraction(const RefractionBsdf bsdf,
                                                       const float3 N,
                                                       const float3 I,
                                                       const float3 omega_in,
@@ -193,7 +230,7 @@ Spectrum bsdf_microfacet_ggx_eval_transmit_refraction(const MicrofacetBsdf bsdf,
   return vec3(out_);
 }
 
-Spectrum bsdf_microfacet_ggx_eval_refraction(const MicrofacetBsdf bsdf,
+Spectrum bsdf_microfacet_ggx_eval_refraction(const RefractionBsdf bsdf,
                                              const float3 I,
                                              const float3 omega_in,
                                              inout float pdf) {
@@ -217,7 +254,7 @@ Spectrum bsdf_microfacet_ggx_eval_refraction(const MicrofacetBsdf bsdf,
                    bsdf, N, I, omega_in, pdf, alpha_x, alpha_y, cosNO, cosNI);
 }
 
-int bsdf_microfacet_ggx_sample_refraction(const MicrofacetBsdf bsdf,
+int bsdf_microfacet_ggx_sample_refraction(const RefractionBsdf bsdf,
                                           float3 Ng,
                                           float3 I,
                                           float randu,
