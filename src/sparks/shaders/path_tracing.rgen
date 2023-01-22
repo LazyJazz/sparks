@@ -61,7 +61,8 @@ vec3 SampleRay(vec3 origin, vec3 direction) {
     }
 
     if (ray_payload.t == -1.0) {
-      radiance += mis_scale * throughput * SampleEnvmap(direction);
+      radiance += mis_scale * throughput * SampleEnvmap(direction) *
+                  global_uniform_object.envmap_scale;
       break;
     }
 

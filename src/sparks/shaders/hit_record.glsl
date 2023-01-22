@@ -127,10 +127,14 @@ HitRecord GetHitRecord(RayPayload ray_payload, vec3 origin, vec3 direction) {
   hit_record.subsurface_color = mat.subsurface_color;
   hit_record.subsurface = mat.subsurface;
   hit_record.subsurface_radius = mat.subsurface_radius;
-  hit_record.metallic = mat.metallic;
+  hit_record.metallic =
+      mat.metallic *
+      SampleTexture(mat.metallic_texture_id, hit_record.tex_coord).x;
   hit_record.specular = mat.specular;
   hit_record.specular_tint = mat.specular_tint;
-  hit_record.roughness = mat.roughness;
+  hit_record.roughness =
+      mat.roughness *
+      SampleTexture(mat.roughness_texture_id, hit_record.tex_coord).x;
   hit_record.anisotropic = mat.anisotropic;
   hit_record.anisotropic_rotation = mat.anisotropic_rotation;
   hit_record.sheen = mat.sheen;

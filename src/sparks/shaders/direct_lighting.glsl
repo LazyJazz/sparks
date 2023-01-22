@@ -22,15 +22,14 @@ float EstimateDirectLightingPdf() {
   if (model_light_weight > 0.0) {
     if (ray_payload.t != -1.0) {
       pdf += entity_objects[ray_payload.object_id].sample_density *
-             ray_payload.t * ray_payload.t * model_light_weight;
+             ray_payload.t * ray_payload.t;
     }
   }
   if (envmap_light_weight > 0.0) {
     if (ray_payload.t == -1.0) {
       vec3 color = SampleEnvmap(trace_ray_direction);
       float strength = max(color.r, max(color.g, color.b));
-      pdf += envmap_light_weight * strength /
-             global_uniform_object.total_envmap_power;
+      pdf += strength / global_uniform_object.total_envmap_power;
     }
   }
   return pdf;
@@ -157,7 +156,8 @@ void SampleEnvmapLighting(inout vec3 eval,
   omega_in = EnvmapCoordToDirection(tex_coord);
   pdf = EvalDirectLighting(omega_in);
   if (ray_payload.t == -1.0) {
-    eval = SampleEnvmapTexCoord(tex_coord) * 4 * PI / pdf;
+    eval = SampleEnvmapTexCoord(tex_coord) *
+           global_uniform_object.envmap_scale * 4 * PI / pdf;
   }
 }
 

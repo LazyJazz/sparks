@@ -30,7 +30,7 @@ struct GlobalUniformObject {
   float total_envmap_power;
   bool enable_mis;
   int output_selection;
-  int reserve;
+  float envmap_scale;
 };
 
 struct EntityUniformObject {
