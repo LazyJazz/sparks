@@ -47,6 +47,11 @@ struct Material {
   MaterialType material_type{MATERIAL_TYPE_LAMBERTIAN};
   int normal_map_id{-1};
   float normal_map_intensity{1.0f};
+
+  int metallic_texture_id{0};
+  int roughness_texture_id{0};
+  int reserve[2]{};
+
   Material() = default;
   explicit Material(const glm::vec3 &albedo);
   Material(Scene *scene, const tinyxml2::XMLElement *material_element);

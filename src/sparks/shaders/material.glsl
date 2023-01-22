@@ -28,10 +28,15 @@ struct Material {
 
   vec3 emission;
   float emission_strength;
+
   float alpha;
   uint material_type;
   int normal_map_id;
   float normal_map_intensity;
+
+  int metallic_texture_id;
+  int roughness_texture_id;
+  int reserve[2];
 };
 
 #define MATERIAL_TYPE_LAMBERTIAN 0

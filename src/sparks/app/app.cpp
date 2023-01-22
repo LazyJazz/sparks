@@ -594,6 +594,24 @@ void App::UpdateImGui() {
           rebuild_object_infos_ = true;
         }
       }
+      if (scene.TextureCombo("Metallic Texture",
+                             &material.metallic_texture_id)) {
+        if (material.metallic_texture_id) {
+          material.metallic = 1.0f;
+        } else {
+          material.metallic = 0.0f;
+        }
+        rebuild_object_infos_ |= true;
+      }
+      if (scene.TextureCombo("Roughness Texture",
+                             &material.roughness_texture_id)) {
+        if (material.metallic_texture_id) {
+          material.roughness = 1.0f;
+        } else {
+          material.roughness = 0.0f;
+        }
+        rebuild_object_infos_ |= true;
+      }
     }
 
 #if !defined(NDEBUG)
