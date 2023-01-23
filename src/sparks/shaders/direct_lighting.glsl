@@ -2,30 +2,19 @@
 #define DIRECT_LIGHTING_GLSL
 #include "envmap.glsl"
 #include "random.glsl"
+#include "shadow_ray.glsl"
 #include "trace_ray.glsl"
 #include "vertex.glsl"
 
 float EstimateDirectLightingPdf() {
   float pdf = 0.0;
-  float model_light_weight = 0.0;
-  float envmap_light_weight = 0.0;
-  float total_light_weight = 0.0;
   if (global_uniform_object.total_power > 1e-4) {
-    model_light_weight = 1.0;
-  }
-  if (global_uniform_object.total_envmap_power > 1e-4) {
-    envmap_light_weight = 1.0;
-  }
-  total_light_weight = model_light_weight + envmap_light_weight;
-  model_light_weight /= total_light_weight;
-  envmap_light_weight /= total_light_weight;
-  if (model_light_weight > 0.0) {
     if (ray_payload.t != -1.0) {
       pdf += entity_objects[ray_payload.object_id].sample_density *
              ray_payload.t * ray_payload.t;
     }
   }
-  if (envmap_light_weight > 0.0) {
+  if (global_uniform_object.total_envmap_power > 1e-4) {
     if (ray_payload.t == -1.0) {
       vec3 color = SampleEnvmap(trace_ray_direction);
       float strength = max(color.r, max(color.g, color.b));
@@ -119,11 +108,13 @@ void SampleModelLighting(inout vec3 eval,
     geometry_normal = -geometry_normal;
   }
 
-  pdf = EvalDirectLighting(omega_in);
-
-  if (abs(ray_payload.t - dist) < max(dist * 1e-4, 1e-4)) {
-    eval = dot(-omega_in, geometry_normal) * global_uniform_object.total_power *
+  float shadow = ShadowRay(hit_record.position, omega_in, dist);
+  if (shadow > 1e-4) {
+    eval = shadow * dot(-omega_in, geometry_normal) *
+           global_uniform_object.total_power *
            materials[object_index].emission / (dist * dist);
+
+    pdf = entity_object.sample_density * dist * dist;
   }
 }
 
@@ -154,10 +145,12 @@ void SampleEnvmapLighting(inout vec3 eval,
   vec2 tex_coord = vec2((x + RandomFloat()) * inv_width,
                         acos(r1 * (z_rbound - z_lbound) + z_lbound) * INV_PI);
   omega_in = EnvmapCoordToDirection(tex_coord);
-  pdf = EvalDirectLighting(omega_in);
-  if (ray_payload.t == -1.0) {
-    eval = SampleEnvmapTexCoord(tex_coord) *
-           global_uniform_object.envmap_scale * 4 * PI / pdf;
+  float shadow = ShadowRay(hit_record.position, omega_in, 1e4);
+  if (shadow > 1e-4) {
+    vec3 color = SampleEnvmapTexCoord(tex_coord);
+    pdf = max(color.r, max(color.g, color.b)) /
+          global_uniform_object.total_envmap_power;
+    eval = shadow * color * global_uniform_object.envmap_scale * 4 * PI / pdf;
   }
 }
 
