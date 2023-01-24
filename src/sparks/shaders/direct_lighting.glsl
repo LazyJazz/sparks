@@ -24,15 +24,6 @@ float EstimateDirectLightingPdf() {
   return pdf;
 }
 
-float EvalDirectLighting(vec3 omega_in) {
-  if (global_uniform_object.total_power > 1e-4 ||
-      global_uniform_object.total_envmap_power > 1e-4) {
-    TraceRay(hit_record.position, omega_in);
-    return EstimateDirectLightingPdf();
-  }
-  return 0.0;
-}
-
 void SampleModelLighting(inout vec3 eval,
                          inout vec3 omega_in,
                          inout float pdf,

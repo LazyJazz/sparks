@@ -474,17 +474,20 @@ void App::UpdateImGui() {
               "_" + std::to_string(current_sample) + "spp.png");
     }
 
+    auto &renderer_settings = renderer_->GetRendererSettings();
     if (app_settings_.hardware_renderer) {
-      reset_accumulation_ |= ImGui::SliderInt(
-          "Samples", &renderer_->GetRendererSettings().num_samples, 1, 128);
+      reset_accumulation_ |=
+          ImGui::SliderInt("Samples", &renderer_settings.num_samples, 1, 128);
     } else {
-      reset_accumulation_ |= ImGui::SliderInt(
-          "Samples", &renderer_->GetRendererSettings().num_samples, 1, 16);
+      reset_accumulation_ |=
+          ImGui::SliderInt("Samples", &renderer_settings.num_samples, 1, 16);
     }
-    reset_accumulation_ |= ImGui::SliderInt(
-        "Bounces", &renderer_->GetRendererSettings().num_bounces, 1, 128);
-    reset_accumulation_ |= ImGui::Checkbox(
-        "Enable MIS", &renderer_->GetRendererSettings().enable_mis);
+    reset_accumulation_ |=
+        ImGui::SliderInt("Bounces", &renderer_settings.num_bounces, 1, 128);
+    reset_accumulation_ |=
+        ImGui::Checkbox("Enable MIS", &renderer_settings.enable_mis);
+    reset_accumulation_ |=
+        ImGui::Checkbox("Alpha Shadow", &renderer_settings.enable_alpha_shadow);
 
     scene.EntityCombo("Selected Entity", &selected_entity_id_);
 
@@ -492,7 +495,8 @@ void App::UpdateImGui() {
         "Color",          "Normal",          "Tangent",     "Bitangent",
         "Shading Normal", "Geometry Normal", "Front Facing"};
     reset_accumulation_ |= ImGui::Combo(
-        "Output Channel", reinterpret_cast<int *>(&output_selection_),
+        "Output Channel",
+        reinterpret_cast<int *>(&renderer_settings.output_selection),
         output_type.data(), output_type.size());
 
     ImGui::NewLine();
@@ -761,10 +765,13 @@ void App::UpdateDynamicBuffer() {
       renderer_->GetScene().GetEntities().size();
   global_uniform_object.enable_mis =
       renderer_->GetRendererSettings().enable_mis;
+  global_uniform_object.enable_alpha_shadow =
+      renderer_->GetRendererSettings().enable_alpha_shadow;
   global_uniform_object.total_power = total_power_;
   global_uniform_object.total_envmap_power =
       renderer_->GetScene().GetEnvmapTotalPower();
-  global_uniform_object.output_selection = output_selection_;
+  global_uniform_object.output_selection =
+      renderer_->GetRendererSettings().output_selection;
 
   auto &camera = renderer_->GetScene().GetCamera();
   global_uniform_object.fov = camera.GetFov();

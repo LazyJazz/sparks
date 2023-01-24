@@ -25,6 +25,7 @@ struct GlobalUniformObject {
   float total_power{0.0f};
   float total_envmap_power{0.0f};
   int enable_mis{true};
+  int enable_alpha_shadow{true};
   int output_selection{0};
   float envmap_scale{1.0};
 };
