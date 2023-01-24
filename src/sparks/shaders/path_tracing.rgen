@@ -38,6 +38,9 @@ layout(binding = 10) readonly buffer primitive_cdf_buffer {
 layout(binding = 11) readonly buffer envmap_cdf_buffer {
   float envmap_cdf[];
 };
+layout(binding = 12) readonly buffer sobol_table_buffer {
+  uint sobol_table[];
+};
 
 layout(location = 0) rayPayloadEXT RayPayload ray_payload;
 

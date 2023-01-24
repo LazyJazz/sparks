@@ -1,8 +1,15 @@
 #ifndef RANDOM_GLSL
 #define RANDOM_GLSL
 struct RandomDevice {
+  uint offset;
+  uint samp;
   uint seed;
+  uint dim;
 } random_device;
+
+uint GrayCode(uint i) {
+  return i ^ (i >> 1);
+}
 
 uint WangHash(inout uint seed) {
   seed = uint(seed ^ uint(61)) ^ uint(seed >> uint(16));
@@ -23,11 +30,27 @@ uint WangHashS(uint seed) {
 }
 
 void InitRandomSeed(uint x, uint y, uint s) {
-  random_device.seed = WangHashS(WangHashS(WangHashS(x) ^ y) ^ s);
+  random_device.offset = WangHashS(WangHashS(x) ^ y);
+  random_device.seed = WangHashS(random_device.offset ^ s);
+  random_device.dim = 0;
+  random_device.samp = GrayCode(s);
+}
+
+uint SobolUint() {
+  uint result = sobol_table[random_device.samp * 1024 + (random_device.dim)] ^
+                WangHash(random_device.offset);
+  random_device.dim++;
+  return result;
+}
+
+uint RandomUint() {
+  if (random_device.dim < 1024 && random_device.samp < 65536)
+    return SobolUint();
+  return WangHash(random_device.seed);
 }
 
 float RandomFloat() {
-  return float(WangHash(random_device.seed)) / 4294967296.0;
+  return float(RandomUint()) / 4294967296.0;
 }
 
 vec2 RandomOnCircle() {

@@ -6,6 +6,7 @@
 #include "sparks/app/entity_uniform_object.h"
 #include "sparks/app/global_uniform_object.h"
 #include "sparks/app/object_info.h"
+#include "sparks/assets/sobol.h"
 #include "sparks/renderer/renderer.h"
 
 namespace sparks {
@@ -123,5 +124,8 @@ class App {
   std::unique_ptr<vulkan::framework::StaticBuffer<float>> envmap_cdf_buffer_;
   float total_power_{0.0f};
   int output_selection_{0};
+
+  std::unique_ptr<vulkan::framework::StaticBuffer<uint32_t>>
+      sobol_table_buffer_;
 };
 }  // namespace sparks

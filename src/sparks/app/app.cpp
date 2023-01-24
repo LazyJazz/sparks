@@ -197,6 +197,16 @@ void App::OnInit() {
       std::make_unique<vulkan::framework::StaticBuffer<float>>(core_.get(), 1);
   envmap_cdf_buffer_ =
       std::make_unique<vulkan::framework::StaticBuffer<float>>(core_.get(), 1);
+
+  if (app_settings_.hardware_renderer) {
+    auto sobol_table =
+        SobolTableGen(65536, 1024, "../../sobol/new-joe-kuo-7.21201");
+    sobol_table_buffer_ =
+        std::make_unique<vulkan::framework::StaticBuffer<uint32_t>>(
+            core_.get(), sobol_table.size());
+    sobol_table_buffer_->Upload(sobol_table.data());
+  }
+
   ImGuizmo::Enable(true);
 }
 
@@ -1241,6 +1251,8 @@ void App::BuildRayTracingPipeline() {
   ray_tracing_render_node_->AddBufferBinding(primitive_cdf_buffer_.get(),
                                              VK_SHADER_STAGE_RAYGEN_BIT_KHR);
   ray_tracing_render_node_->AddBufferBinding(envmap_cdf_buffer_.get(),
+                                             VK_SHADER_STAGE_RAYGEN_BIT_KHR);
+  ray_tracing_render_node_->AddBufferBinding(sobol_table_buffer_.get(),
                                              VK_SHADER_STAGE_RAYGEN_BIT_KHR);
   ray_tracing_render_node_->SetShaders("../../shaders/path_tracing.rgen.spv",
                                        "../../shaders/path_tracing.rmiss.spv",
