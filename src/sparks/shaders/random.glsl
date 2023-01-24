@@ -7,10 +7,6 @@ struct RandomDevice {
   uint dim;
 } random_device;
 
-uint GrayCode(uint i) {
-  return i ^ (i >> 1);
-}
-
 uint WangHash(inout uint seed) {
   seed = uint(seed ^ uint(61)) ^ uint(seed >> uint(16));
   seed *= uint(9);
@@ -33,7 +29,7 @@ void InitRandomSeed(uint x, uint y, uint s) {
   random_device.offset = WangHashS(WangHashS(x) ^ y);
   random_device.seed = WangHashS(random_device.offset ^ s);
   random_device.dim = 0;
-  random_device.samp = GrayCode(s);
+  random_device.samp = s;
 }
 
 uint SobolUint() {
