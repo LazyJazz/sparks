@@ -19,3 +19,6 @@
 [submodule "external/MikkTSpace"]
 	path = external/MikkTSpace
 	url = https://github.com/mmikk/MikkTSpace.git
+[submodule "assets"]
+	path = assets
+	url = https://github.com/LazyJazz/sparks_assets
