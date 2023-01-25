@@ -1264,7 +1264,11 @@ void App::BuildRayTracingPipeline() {
   ray_tracing_render_node_->SetShaders("../../shaders/path_tracing.rgen.spv",
                                        "../../shaders/path_tracing.rmiss.spv",
                                        "../../shaders/path_tracing.rchit.spv");
+  auto start_time = std::chrono::steady_clock::now();
   ray_tracing_render_node_->BuildRenderNode();
+  auto dur = std::chrono::steady_clock::now() - start_time;
+  LAND_INFO("Raytracing pipeline build time: {}ms",
+            dur / std::chrono::milliseconds(1));
 }
 
 void App::Capture(const std::string &file_path) {
