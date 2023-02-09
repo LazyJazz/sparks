@@ -1345,9 +1345,9 @@ void App::OpenFile(const std::string &path) {
     entity_device_assets_.clear();
     selected_entity_id_ = -1;
     envmap_require_configure_ = true;
+    rebuild_object_infos_ = true;
     if (app_settings_.hardware_renderer) {
       reset_accumulation_ = true;
-      rebuild_object_infos_ = true;
       top_level_acceleration_structure_.reset();
       bottom_level_acceleration_structures_.clear();
       object_info_data_.clear();
